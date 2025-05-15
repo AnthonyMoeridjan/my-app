@@ -1,6 +1,16 @@
-@import url('./main-layout.css');
-@import url('./views/dashboard-view.css');
-@import url('./views/data-grid-view.css');
-@import url('./views/master-detail-view.css');
-@import url('./views/gridwith-filters-view.css');
-@import url('./views/checkout-form-view.css');
+vaadin-side-nav-item[selected] {
+  background-color: #334155 !important;
+}
+
+vaadin-side-nav-item[selected] span,
+vaadin-side-nav-item[selected] iron-icon {
+  color: #ffffff !important;
+}
+
+vaadin-side-nav-item iron-icon {
+  color: #94A3B8;
+}
+
+vaadin-side-nav-item span {
+  color: #CBD5E1;
+}
