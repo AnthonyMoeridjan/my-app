@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Create Table: application_user -->
+    <changeSet id="1" author="ant" failOnError="false">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="application_user"/>
+            </not>
+        </preConditions>
+        <createTable tableName="application_user">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="hashed_password" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="profile_picture" type="BLOB"/>
+            <column name="username" type="VARCHAR(255)">
+                <constraints unique="true"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create Table: department -->
+    <changeSet id="2" author="ant" failOnError="false">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="department"/>
+            </not>
+        </preConditions>
+        <createTable tableName="department">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="head" type="VARCHAR(255)"/>
+            <column name="location" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)">
+                <constraints unique="true"/>
+            </column>
+            <column name="phone_number" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Create Table: idgenerator -->
+    <changeSet id="3" author="ant" failOnError="false">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="idgenerator"/>
+            </not>
+        </preConditions>
+        <createTable tableName="idgenerator">
+            <column name="next_val" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Similar preConditions added for all tables -->
+
+    <!-- Create Table: loan -->
+    <changeSet id="4" author="ant" failOnError="false">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="loan"/>
+            </not>
+        </preConditions>
+        <createTable tableName="loan">
+            <column name="loaner_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="principal_amount" type="DECIMAL(15,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="interest_rate" type="DECIMAL(5,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="start_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="end_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(10)" defaultValue="ACTIVE"/>
+            <column name="description" type="TEXT"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="loan"
+                                 baseColumnNames="loaner_id"
+                                 referencedTableName="person"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_loan_person"/>
+    </changeSet>
+
+    <changeSet id="5" author="ant" failOnError="false">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="person"/>
+            </not>
+        </preConditions>
+        <createTable tableName="person">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="address" type="VARCHAR(255)"/>
+            <column name="city" type="VARCHAR(255)"/>
+            <column name="country" type="VARCHAR(255)"/>
+            <column name="date_of_birth" type="DATE"/>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="first_name" type="VARCHAR(255)"/>
+            <column name="gender" type="VARCHAR(255)"/>
+            <column name="last_name" type="VARCHAR(255)"/>
+            <column name="national_id_number" type="VARCHAR(255)"/>
+            <column name="notes" type="VARCHAR(255)"/>
+            <column name="occupation" type="VARCHAR(255)"/>
+            <column name="phone" type="VARCHAR(255)"/>
+            <column name="postal_code" type="VARCHAR(255)"/>
+            <column name="role" type="VARCHAR(255)"/>
+            <column name="state" type="VARCHAR(255)"/>
+            <column name="type" type="VARCHAR(20)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="6" author="ant" failOnError="false">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="project"/>
+            </not>
+        </preConditions>
+        <createTable tableName="project">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="start_date" type="DATE"/>
+            <column name="end_date" type="DATE"/>
+            <column name="status" type="VARCHAR(50)"/>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="7" author="ant" failOnError="false">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="services"/>
+            </not>
+        </preConditions>
+        <createTable tableName="services">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="project_id" type="BIGINT">
+                <constraints foreignKeyName="fk_services_project" references="project(id)" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="price" type="DECIMAL(15,2)"/>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="8" author="ant" failOnError="false">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="timesheets"/>
+            </not>
+        </preConditions>
+        <createTable tableName="timesheets">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="worker_id" type="BIGINT">
+                <constraints foreignKeyName="fk_timesheets_worker" references="workers(id)" nullable="false"/>
+            </column>
+            <column name="project_id" type="BIGINT">
+                <constraints foreignKeyName="fk_timesheets_project" references="project(id)" nullable="false"/>
+            </column>
+            <column name="date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="hours_worked" type="DECIMAL(5,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="9" author="ant" failOnError="false">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="transactions"/>
+            </not>
+        </preConditions>
+        <createTable tableName="transactions">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="dagboek" type="VARCHAR(45)"/>
+            <column name="date" type="DATE"/>
+            <column name="category" type="VARCHAR(45)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="amount" type="DECIMAL(38,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="btw" type="DECIMAL(38,2)"/>
+            <column name="currency" type="VARCHAR(45)"/>
+            <column name="transactionType" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="filePath" type="VARCHAR(500)"/>
+            <column name="project_id" type="BIGINT">
+                <constraints foreignKeyName="fk_transactions_project" references="project(id)"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="10" author="ant" failOnError="false">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="user_roles"/>
+            </not>
+        </preConditions>
+        <createTable tableName="user_roles">
+            <column name="user_id" type="BIGINT">
+                <constraints foreignKeyName="fk_user_roles_user" references="application_user(id)" nullable="false"/>
+            </column>
+            <column name="role" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="11" author="ant" failOnError="false">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="workers"/>
+            </not>
+        </preConditions>
+        <createTable tableName="workers">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="first_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints unique="true"/>
+            </column>
+            <column name="phone" type="VARCHAR(50)"/>
+            <column name="position" type="VARCHAR(255)"/>
+            <column name="department_id" type="BIGINT">
+                <constraints foreignKeyName="fk_workers_department" references="department(id)" nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
