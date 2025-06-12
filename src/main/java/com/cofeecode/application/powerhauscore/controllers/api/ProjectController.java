@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List; // Make sure this import is present
+
 @RestController
 @RequestMapping("/api/v1/projects")
 public class ProjectController {
@@ -28,6 +30,14 @@ public class ProjectController {
     public ResponseEntity<Page<Project>> getAllProjects(Pageable pageable) {
         Page<Project> projects = projectService.list(pageable);
         return ResponseEntity.ok(projects);
+    }
+
+    // New endpoint to get all projects for selection (e.g., dropdowns)
+    @GetMapping("/all")
+    @RolesAllowed({"USER", "RVC", "HR", "ADMIN"})
+    public ResponseEntity<List<Project>> getAllProjectsForSelection() {
+        List<Project> allProjects = projectService.findAll();
+        return ResponseEntity.ok(allProjects);
     }
 
     @GetMapping("/{id}")
