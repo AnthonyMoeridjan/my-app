@@ -53,7 +53,7 @@ public class FileController {
         }
     }
 
-    @GetMapping("/view/{filename:.+}")
+    @GetMapping("/view/{filename}")
     // No specific role needed if files are meant to be publicly viewable by their direct link
     // once associated with a transaction that the user has access to.
     // If direct file access needs protection beyond transaction access, add @RolesAllowed.
@@ -74,7 +74,7 @@ public class FileController {
                 }
                 return ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(contentType))
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\\"" + resource.getFilename() + "\\"")
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
                         .body(resource);
             } else {
                 return ResponseEntity.notFound().build();
@@ -84,7 +84,7 @@ public class FileController {
         }
     }
 
-    @DeleteMapping("/{filename:.+}")
+    @DeleteMapping("/{filename}")
     @RolesAllowed({"ADMIN"})
     public ResponseEntity<Map<String, String>> deleteFileGeneric(@PathVariable String filename) {
         boolean deleted = fileStorageService.deleteFile(filename);
