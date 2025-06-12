@@ -1,57 +1,101 @@
 package com.cofeecode.application.powerhauscore.controllers;
+
+import com.cofeecode.application.powerhauscore.services.FileStorageService;
+import jakarta.annotation.security.RolesAllowed;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/uploads")
+@RequestMapping("/api/v1/files") // Changed base path
 public class FileController {
 
-    private static final String UPLOAD_DIR = "D:/Java Projects/my-app/uploads";
+    private final FileStorageService fileStorageService;
 
-    @GetMapping("/{filename}")
-    public ResponseEntity<Resource> getFile(@PathVariable String filename) {
+    public FileController(FileStorageService fileStorageService) {
+        this.fileStorageService = fileStorageService;
+    }
+
+    @PostMapping("/upload")
+    @RolesAllowed({"USER", "HR", "ADMIN"}) // Allow authenticated users to upload
+    public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "File cannot be empty."));
+        }
+        // Add file size validation if needed: if (file.getSize() > MAX_FILE_SIZE) ...
+        // Add file type validation if needed, beyond what client might send
         try {
-            Path filePath = Paths.get(UPLOAD_DIR).resolve(filename).normalize();
+            String fileName = fileStorageService.storeFile(file);
+            String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
+                    .path("/api/v1/files/view/")
+                    .path(fileName)
+                    .toUriString();
+
+            return ResponseEntity.ok(Map.of(
+                "fileName", fileName,
+                "fileDownloadUri", fileDownloadUri,
+                "message", "File uploaded successfully: " + file.getOriginalFilename()
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                           .body(Map.of("error", "Could not upload the file: " + file.getOriginalFilename() + "! " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/view/{filename:.+}")
+    // No specific role needed if files are meant to be publicly viewable by their direct link
+    // once associated with a transaction that the user has access to.
+    // If direct file access needs protection beyond transaction access, add @RolesAllowed.
+    public ResponseEntity<Resource> viewFile(@PathVariable String filename) {
+        try {
+            Path filePath = fileStorageService.loadFileAsPath(filename);
             Resource resource = new UrlResource(filePath.toUri());
 
-            if (resource.exists()) {
+            if (resource.exists() && resource.isReadable()) {
+                String contentType = null;
+                try {
+                    contentType = java.nio.file.Files.probeContentType(filePath);
+                } catch (IOException e) {
+                    // Log error but continue, default content type will be used
+                }
+                if (contentType == null) {
+                    contentType = "application/octet-stream";
+                }
                 return ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename="" + resource.getFilename() + """)
                         .body(resource);
             } else {
                 return ResponseEntity.notFound().build();
             }
         } catch (MalformedURLException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().build(); // Or internal server error if path construction is wrong
         }
     }
 
-    @DeleteMapping("/{filename}")
-    public ResponseEntity<String> deleteFile(@PathVariable String filename) {
-        try {
-            Path filePath = Paths.get(UPLOAD_DIR).resolve(filename).normalize();
-            File file = filePath.toFile();
-
-            if (file.exists()) {
-                if (file.delete()) {
-                    return ResponseEntity.ok("File deleted successfully.");
-                } else {
-                    return ResponseEntity.status(500).body("Failed to delete the file.");
-                }
-            } else {
-                return ResponseEntity.notFound().build();
-            }
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+    @DeleteMapping("/{filename:.+}")
+    @RolesAllowed({"ADMIN"})
+    public ResponseEntity<Map<String, String>> deleteFileGeneric(@PathVariable String filename) {
+        boolean deleted = fileStorageService.deleteFile(filename);
+        if (deleted) {
+            return ResponseEntity.ok(Map.of("message", "File deleted successfully: " + filename));
+        } else {
+            // This could be because file not found or actual deletion error
+            // FileStorageService.deleteFile logs IOExceptions.
+            // For a REST API, giving a bit more context might be useful, but depends on desired verbosity.
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                                 .body(Map.of("error", "Failed to delete file or file not found: " + filename));
         }
     }
-
 }
