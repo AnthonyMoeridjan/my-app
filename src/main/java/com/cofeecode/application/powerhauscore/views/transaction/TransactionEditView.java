@@ -600,7 +600,42 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
             }
 
             // Step 3: Navigate away
-            UI.getCurrent().navigate(TransactionListView.class);
+            String route = "transactions";
+            List<String> queryParams = new ArrayList<>();
+            try {
+                if (extraFilterValue != null && !extraFilterValue.isEmpty()) {
+                    queryParams.add("extraFilter=" + URLEncoder.encode(extraFilterValue, StandardCharsets.UTF_8.name()));
+                }
+                if (categoryFilterValue != null && !categoryFilterValue.isEmpty()) {
+                    queryParams.add("categoryFilter=" + URLEncoder.encode(categoryFilterValue, StandardCharsets.UTF_8.name()));
+                }
+                if (descriptionFilterValue != null && !descriptionFilterValue.isEmpty()) {
+                    queryParams.add("descriptionFilter=" + URLEncoder.encode(descriptionFilterValue, StandardCharsets.UTF_8.name()));
+                }
+                if (startDateValue != null && !startDateValue.isEmpty()) {
+                    queryParams.add("startDate=" + URLEncoder.encode(startDateValue, StandardCharsets.UTF_8.name()));
+                }
+                if (endDateValue != null && !endDateValue.isEmpty()) {
+                    queryParams.add("endDate=" + URLEncoder.encode(endDateValue, StandardCharsets.UTF_8.name()));
+                }
+                if (typeValue != null && !typeValue.isEmpty()) {
+                    queryParams.add("type=" + URLEncoder.encode(typeValue, StandardCharsets.UTF_8.name()));
+                }
+                if (projectIdValue != null && !projectIdValue.isEmpty()) {
+                    queryParams.add("projectId=" + URLEncoder.encode(projectIdValue, StandardCharsets.UTF_8.name()));
+                }
+                if (dagboekValue != null && !dagboekValue.isEmpty()) {
+                    queryParams.add("dagboek=" + URLEncoder.encode(dagboekValue, StandardCharsets.UTF_8.name()));
+                }
+            } catch (Exception e) {
+                // Handle encoding exception if necessary, perhaps log it
+                Notification.show("Error encoding filter parameters for navigation", 3000, Notification.Position.BOTTOM_START)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+            if (!queryParams.isEmpty()) {
+                route += "?" + String.join("&", queryParams);
+            }
+            UI.getCurrent().navigate(route);
 
         } catch (ValidationException e) {
             Notification.show("Validation error: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START)
