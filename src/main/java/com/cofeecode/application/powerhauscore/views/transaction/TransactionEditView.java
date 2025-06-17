@@ -29,7 +29,6 @@ import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.data.binder.ValidationException;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 
@@ -51,7 +50,6 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 //@PageTitle("Edit Transaction")
@@ -60,17 +58,8 @@ import java.util.Optional;
 public class TransactionEditView extends Div implements BeforeEnterObserver {
 
     private final String TRANSACTION_ID = "transactionID";
-    private static final String UPLOAD_DIRECTORY = "D:/Java Projects/my-app/uploads"; // Directory where uploaded files will be stored
-
-    // Fields to store filter parameters
-    private String extraFilterValue;
-    private String categoryFilterValue;
-    private String descriptionFilterValue;
-    private String startDateValue;
-    private String endDateValue;
-    private String typeValue;
-    private String projectIdValue;
-    private String dagboekValue;
+    // Directory where uploaded files will be stored
+    private static final String UPLOAD_DIRECTORY = "D:/Java Projects/my-app/uploads";
     private final TransactionService transactionService;
     private final ProjectService projectService;
     private final SettingsService settingsService;
@@ -112,19 +101,6 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        // Read filter parameters
-        QueryParameters queryParameters = event.getLocation().getQueryParameters();
-        Map<String, List<String>> parametersMap = queryParameters.getParameters();
-
-        extraFilterValue = parametersMap.getOrDefault("extraFilter", List.of()).stream().findFirst().orElse(null);
-        categoryFilterValue = parametersMap.getOrDefault("categoryFilter", List.of()).stream().findFirst().orElse(null);
-        descriptionFilterValue = parametersMap.getOrDefault("descriptionFilter", List.of()).stream().findFirst().orElse(null);
-        startDateValue = parametersMap.getOrDefault("startDate", List.of()).stream().findFirst().orElse(null);
-        endDateValue = parametersMap.getOrDefault("endDate", List.of()).stream().findFirst().orElse(null);
-        typeValue = parametersMap.getOrDefault("type", List.of()).stream().findFirst().orElse(null);
-        projectIdValue = parametersMap.getOrDefault("projectId", List.of()).stream().findFirst().orElse(null);
-        dagboekValue = parametersMap.getOrDefault("dagboek", List.of()).stream().findFirst().orElse(null);
-
         Optional<Long> transactionId = event.getRouteParameters().get(TRANSACTION_ID).map(Long::parseLong);
         if (transactionId.isPresent()) {
             Optional<Transaction> transactionFromBackend = transactionService.get(transactionId.get());
@@ -132,17 +108,16 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
                 transaction = transactionFromBackend.get();
             } else {
                 Notification.show("Transaction not found", 3000, Notification.Position.BOTTOM_START);
-                // Navigate back to list view, potentially with filters if they were passed
-                cancel();
+                event.forwardTo(TransactionListView.class);
                 return;
             }
-        } else {
-            transaction = new Transaction();
-        }
+        }else {
+                transaction = new Transaction();
+            }
         createForm();
         updatePageTitle();
         populateForm();
-    }
+        }
 
 
     private void createForm() {
@@ -612,47 +587,9 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
     }
 
 
-    private void cancel() {
-        String route = "transactions";
-        List<String> queryParams = new ArrayList<>();
-
-        try {
-            if (extraFilterValue != null && !extraFilterValue.isEmpty()) {
-                queryParams.add("extraFilter=" + URLEncoder.encode(extraFilterValue, StandardCharsets.UTF_8.name()));
-            }
-            if (categoryFilterValue != null && !categoryFilterValue.isEmpty()) {
-                queryParams.add("categoryFilter=" + URLEncoder.encode(categoryFilterValue, StandardCharsets.UTF_8.name()));
-            }
-            if (descriptionFilterValue != null && !descriptionFilterValue.isEmpty()) {
-                queryParams.add("descriptionFilter=" + URLEncoder.encode(descriptionFilterValue, StandardCharsets.UTF_8.name()));
-            }
-            if (startDateValue != null && !startDateValue.isEmpty()) {
-                queryParams.add("startDate=" + URLEncoder.encode(startDateValue, StandardCharsets.UTF_8.name()));
-            }
-            if (endDateValue != null && !endDateValue.isEmpty()) {
-                queryParams.add("endDate=" + URLEncoder.encode(endDateValue, StandardCharsets.UTF_8.name()));
-            }
-            if (typeValue != null && !typeValue.isEmpty()) {
-                queryParams.add("type=" + URLEncoder.encode(typeValue, StandardCharsets.UTF_8.name()));
-            }
-            if (projectIdValue != null && !projectIdValue.isEmpty()) {
-                queryParams.add("projectId=" + URLEncoder.encode(projectIdValue, StandardCharsets.UTF_8.name()));
-            }
-            if (dagboekValue != null && !dagboekValue.isEmpty()) {
-                queryParams.add("dagboek=" + URLEncoder.encode(dagboekValue, StandardCharsets.UTF_8.name()));
-            }
-        } catch (Exception e) {
-            // Handle encoding exception if necessary, perhaps log it
-            Notification.show("Error encoding filter parameters", 3000, Notification.Position.BOTTOM_START)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-        }
-
-        if (!queryParams.isEmpty()) {
-            route += "?" + String.join("&", queryParams);
-        }
-        UI.getCurrent().navigate(route);
+    private void cancel(){
+        UI.getCurrent().navigate(TransactionListView.class);
     }
-
     private void deleteTransaction() {
         transactionService.delete(transaction.getId());
         UI.getCurrent().navigate(TransactionListView.class);

@@ -39,19 +39,11 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 
 import java.math.BigDecimal;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import com.vaadin.flow.router.QueryParameters;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
@@ -355,49 +347,7 @@ public class TransactionListView extends VerticalLayout implements BeforeEnterOb
 
         grid.asSingleSelect().addValueChangeListener(event -> {
             if (event.getValue() != null) {
-                String route = String.format(TRANSACTION_EDIT_ROUTE_TEMPLATE, event.getValue().getId());
-                List<String> queryParams = new ArrayList<>();
-
-                try {
-                    // Text filters
-                    if (extraFilter.getValue() != null && !extraFilter.getValue().isEmpty()) {
-                        queryParams.add("extraFilter=" + URLEncoder.encode(extraFilter.getValue(), StandardCharsets.UTF_8.name()));
-                    }
-                    if (categoryFilter.getValue() != null && !categoryFilter.getValue().isEmpty()) {
-                        queryParams.add("categoryFilter=" + URLEncoder.encode(categoryFilter.getValue(), StandardCharsets.UTF_8.name()));
-                    }
-                    if (descriptionFilter.getValue() != null && !descriptionFilter.getValue().isEmpty()) {
-                        queryParams.add("descriptionFilter=" + URLEncoder.encode(descriptionFilter.getValue(), StandardCharsets.UTF_8.name()));
-                    }
-
-                    // Date filters
-                    if (startDateFilter.getValue() != null) {
-                        queryParams.add("startDate=" + URLEncoder.encode(startDateFilter.getValue().toString(), StandardCharsets.UTF_8.name()));
-                    }
-                    if (endDateFilter.getValue() != null) {
-                        queryParams.add("endDate=" + URLEncoder.encode(endDateFilter.getValue().toString(), StandardCharsets.UTF_8.name()));
-                    }
-
-                    // ComboBox filters
-                    if (typeFilter.getValue() != null) {
-                        queryParams.add("type=" + URLEncoder.encode(typeFilter.getValue().name(), StandardCharsets.UTF_8.name()));
-                    }
-                    if (projectFilter.getValue() != null && projectFilter.getValue().getId() != null) {
-                        queryParams.add("projectId=" + URLEncoder.encode(String.valueOf(projectFilter.getValue().getId()), StandardCharsets.UTF_8.name()));
-                    }
-                    if (dagboekFilter.getValue() != null && !dagboekFilter.getValue().isEmpty()) {
-                        queryParams.add("dagboek=" + URLEncoder.encode(dagboekFilter.getValue(), StandardCharsets.UTF_8.name()));
-                    }
-
-                } catch (Exception e) {
-                    // Broad exception catch for URLEncoder.encode, consider more specific handling or logging
-                    System.err.println("Error encoding query parameters: " + e.getMessage());
-                }
-
-                if (!queryParams.isEmpty()) {
-                    route += "?" + String.join("&", queryParams);
-                }
-                UI.getCurrent().navigate(route);
+                UI.getCurrent().navigate(String.format(TRANSACTION_EDIT_ROUTE_TEMPLATE, event.getValue().getId()));
             }
         });
 
@@ -513,89 +463,5 @@ public class TransactionListView extends VerticalLayout implements BeforeEnterOb
     }
 
     @Override
-    public void beforeEnter(BeforeEnterEvent event) {
-        QueryParameters queryParameters = event.getLocation().getQueryParameters();
-        Map<String, List<String>> parametersMap = queryParameters.getParameters();
-
-        boolean localFiltersAppliedFromUrl = false;
-
-        // Text filters
-        String extraFilterParam = parametersMap.getOrDefault("extraFilter", List.of()).stream().findFirst().orElse(null);
-        if (extraFilterParam != null) {
-            extraFilter.setValue(extraFilterParam);
-            localFiltersAppliedFromUrl = true;
-        }
-
-        String categoryFilterParam = parametersMap.getOrDefault("categoryFilter", List.of()).stream().findFirst().orElse(null);
-        if (categoryFilterParam != null) {
-            categoryFilter.setValue(categoryFilterParam);
-            localFiltersAppliedFromUrl = true;
-        }
-
-        String descriptionFilterParam = parametersMap.getOrDefault("descriptionFilter", List.of()).stream().findFirst().orElse(null);
-        if (descriptionFilterParam != null) {
-            descriptionFilter.setValue(descriptionFilterParam);
-            localFiltersAppliedFromUrl = true;
-        }
-
-        // Date filters
-        String startDateParam = parametersMap.getOrDefault("startDate", List.of()).stream().findFirst().orElse(null);
-        if (startDateParam != null) {
-            try {
-                startDateFilter.setValue(LocalDate.parse(startDateParam));
-                localFiltersAppliedFromUrl = true;
-            } catch (DateTimeParseException e) {
-                System.err.println("Error parsing startDate: " + startDateParam + " - " + e.getMessage());
-            }
-        }
-
-        String endDateParam = parametersMap.getOrDefault("endDate", List.of()).stream().findFirst().orElse(null);
-        if (endDateParam != null) {
-            try {
-                endDateFilter.setValue(LocalDate.parse(endDateParam));
-                localFiltersAppliedFromUrl = true;
-            } catch (DateTimeParseException e) {
-                System.err.println("Error parsing endDate: " + endDateParam + " - " + e.getMessage());
-            }
-        }
-
-        // ComboBox filters
-        String typeParam = parametersMap.getOrDefault("type", List.of()).stream().findFirst().orElse(null);
-        if (typeParam != null) {
-            try {
-                typeFilter.setValue(TransactionType.valueOf(typeParam));
-                localFiltersAppliedFromUrl = true;
-            } catch (IllegalArgumentException e) {
-                System.err.println("Error parsing type: " + typeParam + " - " + e.getMessage());
-            }
-        }
-
-        String projectIdParam = parametersMap.getOrDefault("projectId", List.of()).stream().findFirst().orElse(null);
-        if (projectIdParam != null) {
-            try {
-                Long pId = Long.parseLong(projectIdParam);
-                Optional<Project> projectToSelect = projectFilter.getDataProvider().fetch(new com.vaadin.flow.data.provider.Query<>())
-                        .filter(p -> p.getId().equals(pId))
-                        .findFirst();
-                if (projectToSelect.isPresent()) {
-                    projectFilter.setValue(projectToSelect.get());
-                    localFiltersAppliedFromUrl = true;
-                } else {
-                     System.err.println("Project with ID: " + projectIdParam + " not found in projectFilter items.");
-                }
-            } catch (NumberFormatException e) {
-                System.err.println("Error parsing projectId: " + projectIdParam + " - " + e.getMessage());
-            }
-        }
-
-        String dagboekParam = parametersMap.getOrDefault("dagboek", List.of()).stream().findFirst().orElse(null);
-        if (dagboekParam != null) {
-            dagboekFilter.setValue(dagboekParam);
-            localFiltersAppliedFromUrl = true;
-        }
-
-        if (localFiltersAppliedFromUrl) {
-            updateFilteredGrid();
-        }
-    }
+    public void beforeEnter(BeforeEnterEvent event) {}
 }
