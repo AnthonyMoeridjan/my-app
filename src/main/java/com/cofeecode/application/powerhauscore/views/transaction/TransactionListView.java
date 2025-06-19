@@ -23,8 +23,12 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.component.orderedlayout.FlexLayout;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -38,6 +42,10 @@ import com.vaadin.flow.spring.data.VaadinSpringDataHelpers;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 
+import java.math.BigDecimal;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -54,6 +62,8 @@ import java.util.stream.Stream;
 import com.vaadin.flow.router.QueryParameters;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import org.springframework.data.domain.PageRequest;
@@ -84,11 +94,14 @@ public class TransactionListView extends VerticalLayout implements BeforeEnterOb
     private final Span usdTotal = new Span();
     private final Span eurTotal = new Span();
 
+    private Specification<Transaction> currentSpec;
+
     private final HorizontalLayout filterFeedback = new HorizontalLayout();
     private final Span filterStatus = new Span("Bedragen zijn gefilterd");
 
     public TransactionListView(TransactionService transactionService) {
         this.transactionService = transactionService;
+        this.currentSpec = (root, query, cb) -> cb.conjunction(); // Initialize to select all
 
         startDateFilter = new DatePicker("From");
         endDateFilter = new DatePicker("To");
@@ -249,21 +262,56 @@ public class TransactionListView extends VerticalLayout implements BeforeEnterOb
         presetKas.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         presetBank.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
 
+        Button exportButton = new Button("Export to XLSX", VaadinIcon.DOWNLOAD_ALT.create());
+        exportButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        exportButton.addClickListener(e -> {
+            ByteArrayOutputStream baos = generateTransactionsXlsx();
+            if (baos != null && baos.size() > 0) {
+                String fileName = "transactions_" + System.currentTimeMillis() + ".xlsx";
+                StreamResource streamResource = new StreamResource(fileName, () -> new ByteArrayInputStream(baos.toByteArray()));
+                streamResource.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                streamResource.setCacheTime(0);
+
+                Anchor downloadLink = new Anchor(streamResource, "");
+                downloadLink.getElement().setAttribute("download", true);
+                downloadLink.getStyle().set("display", "none");
+                add(downloadLink); // Add to the UI to be clickable
+                UI.getCurrent().getPage().executeJs("$0.click()", downloadLink.getElement());
+
+                // Use a then() block to remove the link after the JS execution is likely done.
+                // This is more robust than immediate removal.
+                UI.getCurrent().getPage().executeJs("1+1").then(r -> remove(downloadLink));
+
+
+                Notification.show("Export started: " + fileName, 3000, Notification.Position.BOTTOM_START);
+            } else {
+                Notification.show("Failed to generate XLSX or no data to export.", 3000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+
+        // exportButton is already defined above with its click listener
+
         HorizontalLayout leftLayout = new HorizontalLayout(newTransaction, presetToday, thisMonthBtn, thisYearBtn, presetKas, presetBank);
         leftLayout.setSpacing(true);
         leftLayout.setPadding(false);
 
+        // Create a new layout for the right side buttons to group them
+        HorizontalLayout rightButtonLayout = new HorizontalLayout(exportButton, filterButton);
+        rightButtonLayout.setSpacing(true); // Add spacing between export and filter buttons
+        rightButtonLayout.setPadding(false);
+
+
         HorizontalLayout layout = new HorizontalLayout();
         layout.setAlignItems(FlexComponent.Alignment.CENTER);
-        layout.setJustifyContentMode(JustifyContentMode.BETWEEN);
+        layout.setJustifyContentMode(JustifyContentMode.BETWEEN); // This will push leftLayout to left and rightButtonLayout to right
         layout.setWidthFull();
-        layout.setSpacing(true);
+        // layout.setSpacing(true); // Spacing is handled by inner layouts or can be adjusted here if needed for overall layout
         layout.setPadding(false);
-//        layout.getStyle().set("gap", "0.5rem");
         layout.addClassName(LumoUtility.Margin.Bottom.MEDIUM);
 
         // Add components in order
-        layout.add(leftLayout, filterButton);
+        layout.add(leftLayout, rightButtonLayout); // Add the new group to the main layout
 
         return layout;
     }
@@ -473,6 +521,8 @@ public class TransactionListView extends VerticalLayout implements BeforeEnterOb
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
+        this.currentSpec = spec; // Update the current specification
+
         boolean hasFilters = startDateFilter.getValue() != null
                 || endDateFilter.getValue() != null
                 || typeFilter.getValue() != null
@@ -597,5 +647,95 @@ public class TransactionListView extends VerticalLayout implements BeforeEnterOb
         if (localFiltersAppliedFromUrl) {
             updateFilteredGrid();
         }
+    }
+
+    private ByteArrayOutputStream generateTransactionsXlsx() {
+        List<Transaction> transactionsToExport = transactionService.findAll(this.currentSpec);
+
+        if (transactionsToExport.isEmpty()) {
+            return null; // Or an empty stream
+        }
+
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Transactions");
+
+        // Header Font and Style
+        Font headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        CellStyle headerStyle = workbook.createCellStyle();
+        headerStyle.setFont(headerFont);
+
+        // Date Cell Style
+        CreationHelper createHelper = workbook.getCreationHelper();
+        CellStyle dateCellStyle = workbook.createCellStyle();
+        dateCellStyle.setDataFormat(createHelper.createDataFormat().getFormat("yyyy-mm-dd"));
+
+        // Header Row
+        Row headerRow = sheet.createRow(0);
+        String[] headers = {"Dagboek", "Date", "Type", "Currency", "Amount", "Description", "Category", "Project", "BTW", "Extra Info"};
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+        }
+
+        // Data Rows
+        int rowIndex = 1;
+        for (Transaction tx : transactionsToExport) {
+            Row dataRow = sheet.createRow(rowIndex++);
+
+            dataRow.createCell(0).setCellValue(tx.getDagboek() != null ? tx.getDagboek() : "");
+
+            Cell dateCell = dataRow.createCell(1);
+            if (tx.getDate() != null) {
+                dateCell.setCellValue(tx.getDate());
+                dateCell.setCellStyle(dateCellStyle);
+            } else {
+                dateCell.setCellValue("");
+            }
+
+            dataRow.createCell(2).setCellValue(tx.getTransactionType() != null ? (tx.getTransactionType() == TransactionType.DEBIT ? "Uitgaven" : "Inkomsten") : "");
+            dataRow.createCell(3).setCellValue(tx.getCurrency() != null ? tx.getCurrency() : "");
+
+            Cell amountCell = dataRow.createCell(4);
+            if (tx.getAmount() != null) {
+                amountCell.setCellValue(tx.getAmount().doubleValue());
+            } else {
+                amountCell.setCellValue(0.0);
+            }
+
+            dataRow.createCell(5).setCellValue(tx.getDescription() != null ? tx.getDescription() : "");
+            dataRow.createCell(6).setCellValue(tx.getCategory() != null ? tx.getCategory() : "");
+            dataRow.createCell(7).setCellValue(tx.getProject() != null && tx.getProject().getName() != null ? tx.getProject().getName() : "");
+
+            Cell btwCell = dataRow.createCell(8);
+            if (tx.getBtw() != null) {
+                btwCell.setCellValue(tx.getBtw().doubleValue());
+            } else {
+                btwCell.setCellValue(0.0);
+            }
+            dataRow.createCell(9).setCellValue(tx.getExtra() != null ? tx.getExtra() : "");
+        }
+
+        // Autosize columns
+        for (int i = 0; i < headers.length; i++) {
+            sheet.autoSizeColumn(i);
+        }
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            workbook.write(baos);
+        } catch (IOException e) {
+            e.printStackTrace(); // Proper logging would be better
+            // Consider notifying the user or returning null
+            return null;
+        } finally {
+            try {
+                workbook.close();
+            } catch (IOException e) {
+                e.printStackTrace(); // Proper logging
+            }
+        }
+        return baos;
     }
 }
