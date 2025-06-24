@@ -5,6 +5,7 @@ import com.cofeecode.application.powerhauscore.customfield.PriceField;
 import com.cofeecode.application.powerhauscore.data.Project;
 import com.cofeecode.application.powerhauscore.data.Transaction;
 import com.cofeecode.application.powerhauscore.data.TransactionType;
+import com.cofeecode.application.powerhauscore.security.AuthenticatedUser;
 import com.cofeecode.application.powerhauscore.services.ProjectService;
 import com.cofeecode.application.powerhauscore.services.SettingsService;
 import com.cofeecode.application.powerhauscore.services.TransactionService;
