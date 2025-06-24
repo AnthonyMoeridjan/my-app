@@ -74,8 +74,10 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
     private final TransactionService transactionService;
     private final ProjectService projectService;
     private final SettingsService settingsService;
+    private final AuthenticatedUser authenticatedUser;
     private Transaction transaction;
     private BeanValidationBinder<Transaction> binder;
+    private boolean isEditMode = false;
 
     // Form fields
     private DatePicker date = new DatePicker("Date");
@@ -91,6 +93,7 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
     private final Button save = new Button("Save", event -> save());
     private final Button cancel = new Button("Cancel", event -> cancel());
     private final Button delete = new Button("Delete", event -> deleteTransaction());
+    private final Button editButton = new Button("Edit");
 
 
     private Upload upload;
@@ -103,10 +106,11 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
 
     private final Button deleteFileButton = new Button("Delete File", event -> deleteFile());
 
-    public TransactionEditView(TransactionService transactionService, ProjectService projectService, SettingsService settingsService) {
+    public TransactionEditView(TransactionService transactionService, ProjectService projectService, SettingsService settingsService, AuthenticatedUser authenticatedUser) {
         this.transactionService = transactionService;
         this.projectService = projectService;
         this.settingsService = settingsService;
+        this.authenticatedUser = authenticatedUser;
         addClassName("edit-view");
     }
 
@@ -138,10 +142,37 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
             }
         } else {
             transaction = new Transaction();
+            isEditMode = true; // New transactions start in edit mode
         }
         createForm();
         updatePageTitle();
-        populateForm();
+        populateForm(); // This will also call setFieldsReadOnly based on isEditMode
+
+        // Delete button visibility is handled in createForm based on transaction.getId()
+        // All other button states are handled by updateButtonStates()
+        updateButtonStates();
+    }
+
+    private void updateButtonStates() {
+        boolean canEdit = authenticatedUser.get().map(user -> user.getRoles().stream()
+                        .anyMatch(role -> role == com.cofeecode.application.powerhauscore.data.Role.ADMIN ||
+                                role == com.cofeecode.application.powerhauscore.data.Role.HR))
+                .orElse(false);
+
+        if (isEditMode) {
+            editButton.setVisible(false);
+            save.setVisible(canEdit); // If in edit mode, save is possible if user has edit roles
+            cancel.setVisible(true); // Always show cancel when in edit mode
+        } else { // View mode
+            editButton.setVisible(canEdit);
+            save.setVisible(false);
+            // Cancel button in view mode can act as a "Back" button.
+            // Or, it could be hidden if no "Back" action is desired when just viewing.
+            // For consistency with its behavior (navigation), let's keep it visible.
+            cancel.setVisible(true);
+        }
+        // Delete button visibility is independent of edit mode, only depends on if transaction exists.
+        // It's set in createForm: delete.setVisible(transaction.getId() != null);
     }
 
 
@@ -339,12 +370,53 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
         hl4.setSpacing(true);
         hl4.setWidth("min-content");
         hl4.getElement().getStyle().set("margin-left","15px");
+
+        editButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        editButton.addClickListener(e -> enterEditMode());
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
-        HorizontalLayout hl41 = new HorizontalLayout(save,cancel, delete);
+
+        // Initial button visibility
+        editButton.setVisible(false); // Will be set in beforeEnter based on roles and mode
+        save.setVisible(false);
+        cancel.setVisible(false);
+
+
+        HorizontalLayout hl41 = new HorizontalLayout(editButton, save, cancel, delete);
         hl4.add(hl41);
 //        add(formLayout, buttons);
         add(hl4);
+    }
+
+    private void enterEditMode() {
+        isEditMode = true;
+        setFieldsReadOnly(false);
+        updateButtonStates();
+        // Delete button visibility remains unchanged by mode switch, only by existence of transaction.
+    }
+
+    private void setFieldsReadOnly(boolean readOnly) {
+        date.setReadOnly(readOnly);
+        amount.setReadOnly(readOnly);
+        description.setReadOnly(readOnly);
+        btw.setReadOnly(readOnly);
+        dagboek.setReadOnly(readOnly);
+        category.setReadOnly(readOnly);
+        lener.setReadOnly(readOnly);
+        project.setReadOnly(readOnly);
+        transactionTypeRadio.setReadOnly(readOnly);
+        upload.setVisible(!readOnly);
+
+        boolean canShowDeleteFileButton = !readOnly && uploadedFilePath != null && !uploadedFilePath.isEmpty();
+        deleteFileButton.setVisible(canShowDeleteFileButton);
+
+
+        // For PriceField, we need to make sure the currency selector is also read-only.
+        // PriceField itself might handle its internal components, but if not, explicit control is needed.
+        // Assuming PriceField's setReadOnly(true) correctly makes the amount and currency parts read-only.
+        // If PriceField does not cascade readOnly to its currency ComboBox, we would do:
+        // amount.getCurrency().setReadOnly(readOnly);
+        // btw.getCurrency().setReadOnly(readOnly);
     }
 
     private void configureBinder() {
@@ -544,6 +616,7 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
             }
 
         }
+        setFieldsReadOnly(!isEditMode); // Ensure fields read-only state is set based on current mode
     }
 
     private void save() {
@@ -599,6 +672,11 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
                 }
             }
 
+            // Exit edit mode
+            isEditMode = false;
+            setFieldsReadOnly(true);
+            updateButtonStates();
+
             // Step 3: Navigate away
             String route = "transactions";
             List<String> queryParams = new ArrayList<>();
@@ -648,6 +726,14 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
 
 
     private void cancel() {
+        // Reset edit mode and form state
+        isEditMode = false;
+        populateForm(); // This will re-bind the original bean and calls setFieldsReadOnly
+
+        // Update button visibility
+        updateButtonStates();
+
+        // Navigate away
         String route = "transactions";
         List<String> queryParams = new ArrayList<>();
 
