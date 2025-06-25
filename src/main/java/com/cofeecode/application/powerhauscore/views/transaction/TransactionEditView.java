@@ -608,7 +608,7 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
         if (photoExists) {
             photoPreview.setSrc("/files/view/" + currentPhotoFileName);
         } else {
-            photoPreview.setSrc(null); // Clear src if no photo
+            photoPreview.setSrc(""); // Clear src with empty string to avoid ambiguity
         }
     }
 
