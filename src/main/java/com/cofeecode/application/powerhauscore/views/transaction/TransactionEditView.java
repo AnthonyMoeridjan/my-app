@@ -172,8 +172,11 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
             // For consistency with its behavior (navigation), let's keep it visible.
             cancel.setVisible(true);
         }
-        // Delete button visibility is independent of edit mode, only depends on if transaction exists.
-        // It's set in createForm: delete.setVisible(transaction.getId() != null);
+        // Delete button visibility is handled by this method now.
+        boolean isAdmin = authenticatedUser.get().map(user -> user.getRoles().stream()
+                        .anyMatch(role -> role == com.cofeecode.application.powerhauscore.data.Role.ADMIN))
+                .orElse(false);
+        delete.setVisible(transaction.getId() != null && isAdmin);
     }
 
 
@@ -194,11 +197,21 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
         transactionTypeRadio.setItemLabelGenerator(type -> type == TransactionType.DEBIT ? "Uitgaven" : "Inkomsten");
         transactionTypeRadio.setValue(TransactionType.CREDIT);
 
+        // Initialize editButton themes and click listener here as it's part of hl1 now
+        editButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        editButton.addClickListener(e -> enterEditMode());
+        // Edit button is initially invisible, its state is managed by updateButtonStates
+        editButton.setVisible(false);
+
+
         Paragraph textSmall = new Paragraph("SRD 0.00 $ 0.00 Euro 0.00");
         textSmall.setWidth("20em");
         textSmall.getStyle().set("font-size", "var(--lumo-font-size-xs)");
 
-        hl1.add(transactionTypeRadio);
+        hl1.add(transactionTypeRadio, editButton); // Add editButton to hl1
+        hl1.setFlexGrow(1, transactionTypeRadio); // Allow radio group to take available space
+        hl1.setAlignItems(FlexComponent.Alignment.BASELINE); // Align items to baseline
+
         add(hl1);
 
         HorizontalLayout hl2 = new HorizontalLayout();
@@ -360,30 +373,24 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
 
         configureBinder();
 
-
-        if (transaction.getId() != null) {
-            delete.setVisible(true);
-        } else {
-            delete.setVisible(false);
-        }
+        // Delete button visibility is now handled in updateButtonStates()
 
         HorizontalLayout hl4 = new HorizontalLayout();
         hl4.setSpacing(true);
         hl4.setWidth("min-content");
         hl4.getElement().getStyle().set("margin-left","15px");
 
-        editButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        editButton.addClickListener(e -> enterEditMode());
+        // editButton is now part of hl1
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
         // Initial button visibility
-        editButton.setVisible(false); // Will be set in beforeEnter based on roles and mode
+        // editButton.setVisible(false); // Now handled in its new location
         save.setVisible(false);
         cancel.setVisible(false);
 
 
-        HorizontalLayout hl41 = new HorizontalLayout(editButton, save, cancel, delete);
+        HorizontalLayout hl41 = new HorizontalLayout(save, cancel, delete); // Removed editButton from here
         hl4.add(hl41);
 //        add(formLayout, buttons);
         add(hl4);
