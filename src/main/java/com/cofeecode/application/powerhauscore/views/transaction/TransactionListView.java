@@ -210,57 +210,57 @@ public class TransactionListView extends VerticalLayout implements BeforeEnterOb
         filterButton.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
         filterButton.addClickListener(e -> openFilterDialog());
 
-        Button thisMonthBtn = new Button("This Month", e -> {
-            LocalDate now = LocalDate.now();
-            startDateFilter.setValue(now.withDayOfMonth(1));
-            endDateFilter.setValue(now);
-            updateFilteredGrid();
-        });
+        // Button thisMonthBtn = new Button("This Month", e -> {
+        //     LocalDate now = LocalDate.now();
+        //     startDateFilter.setValue(now.withDayOfMonth(1));
+        //     endDateFilter.setValue(now);
+        //     updateFilteredGrid();
+        // });
 
-        Button last30DaysBtn = new Button("Last 30 Days", e -> {
-            LocalDate now = LocalDate.now();
-            startDateFilter.setValue(now.minusDays(30));
-            endDateFilter.setValue(now);
-            updateFilteredGrid();
-        });
+        // Button last30DaysBtn = new Button("Last 30 Days", e -> {
+        //     LocalDate now = LocalDate.now();
+        //     startDateFilter.setValue(now.minusDays(30));
+        //     endDateFilter.setValue(now);
+        //     updateFilteredGrid();
+        // });
 
-        Button thisYearBtn = new Button("This Year", e -> {
-            LocalDate now = LocalDate.now();
-            startDateFilter.setValue(now.withDayOfYear(1));
-            endDateFilter.setValue(now);
-            updateFilteredGrid();
-        });
+        // Button thisYearBtn = new Button("This Year", e -> {
+        //     LocalDate now = LocalDate.now();
+        //     startDateFilter.setValue(now.withDayOfYear(1));
+        //     endDateFilter.setValue(now);
+        //     updateFilteredGrid();
+        // });
 
-        Button presetToday = new Button("Today", e -> {
-            LocalDate today = LocalDate.now();
-            startDateFilter.setValue(today);
-            endDateFilter.setValue(today);
-            updateFilteredGrid();
-        });
+        // Button presetToday = new Button("Today", e -> {
+        //     LocalDate today = LocalDate.now();
+        //     startDateFilter.setValue(today);
+        //     endDateFilter.setValue(today);
+        //     updateFilteredGrid();
+        // });
 
-        Button clearBtn = new Button("Clear", e -> {
-            startDateFilter.clear();
-            endDateFilter.clear();
-            updateFilteredGrid();
-        });
+        // Button clearBtn = new Button("Clear", e -> {
+        //     startDateFilter.clear();
+        //     endDateFilter.clear();
+        //     updateFilteredGrid();
+        // });
 
-        Button presetKas = new Button("Kas", e -> {
-            dagboekFilter.setValue("Kas");
-            updateFilteredGrid();
-        });
+        // Button presetKas = new Button("Kas", e -> {
+        //     dagboekFilter.setValue("Kas");
+        //     updateFilteredGrid();
+        // });
 
-        Button presetBank = new Button("Bank", e -> {
-            dagboekFilter.setValue("Bank");
-            updateFilteredGrid();
-        });
+        // Button presetBank = new Button("Bank", e -> {
+        //     dagboekFilter.setValue("Bank");
+        //     updateFilteredGrid();
+        // });
 
-        presetToday.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        thisMonthBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        last30DaysBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        thisYearBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        clearBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        presetKas.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        presetBank.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        // presetToday.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        // thisMonthBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        // last30DaysBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        // thisYearBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        // clearBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        // presetKas.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        // presetBank.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
 
         Button exportButton = new Button("Export to XLSX", VaadinIcon.DOWNLOAD_ALT.create());
         exportButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
@@ -292,7 +292,7 @@ public class TransactionListView extends VerticalLayout implements BeforeEnterOb
 
         // exportButton is already defined above with its click listener
 
-        HorizontalLayout leftLayout = new HorizontalLayout(newTransaction, presetToday, thisMonthBtn, thisYearBtn, presetKas, presetBank);
+        HorizontalLayout leftLayout = new HorizontalLayout(newTransaction); // Removed preset buttons
         leftLayout.setSpacing(true);
         leftLayout.setPadding(false);
 
@@ -457,6 +457,56 @@ public class TransactionListView extends VerticalLayout implements BeforeEnterOb
             filterDialog = new Dialog();
             filterDialog.setHeaderTitle("Filter Transactions");
 
+            // Create layout for preset buttons
+            HorizontalLayout presetButtonLayout = new HorizontalLayout();
+            presetButtonLayout.setSpacing(true);
+            presetButtonLayout.getStyle().set("margin-bottom", "1rem"); // Add some space below presets
+
+            Button presetTodayDialog = new Button("Today", e -> {
+                LocalDate today = LocalDate.now();
+                startDateFilter.setValue(today);
+                endDateFilter.setValue(today);
+                // updateFilteredGrid(); // Optionally apply immediately or wait for Apply button
+            });
+            presetTodayDialog.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+
+            Button thisMonthBtnDialog = new Button("This Month", e -> {
+                LocalDate now = LocalDate.now();
+                startDateFilter.setValue(now.withDayOfMonth(1));
+                endDateFilter.setValue(now);
+                // updateFilteredGrid();
+            });
+            thisMonthBtnDialog.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+            Button thisYearBtnDialog = new Button("This Year", e -> {
+                LocalDate now = LocalDate.now();
+                startDateFilter.setValue(now.withDayOfYear(1));
+                endDateFilter.setValue(now);
+                // updateFilteredGrid();
+            });
+            thisYearBtnDialog.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+            Button presetKasDialog = new Button("Kas", e -> {
+                dagboekFilter.setValue("Kas");
+                // updateFilteredGrid();
+            });
+            presetKasDialog.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+
+            Button presetBankDialog = new Button("Bank", e -> {
+                dagboekFilter.setValue("Bank");
+                // updateFilteredGrid();
+            });
+            presetBankDialog.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+
+            Button clearDatesBtnDialog = new Button("Clear Dates", e -> {
+                startDateFilter.clear();
+                endDateFilter.clear();
+            });
+            clearDatesBtnDialog.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+
+            presetButtonLayout.add(presetTodayDialog, thisMonthBtnDialog, thisYearBtnDialog, presetKasDialog, presetBankDialog, clearDatesBtnDialog);
+
+
             FormLayout formLayout = new FormLayout();
             formLayout.add(startDateFilter, endDateFilter, typeFilter, projectFilter, dagboekFilter, extraFilter, categoryFilter, descriptionFilter);
             formLayout.setResponsiveSteps(
@@ -480,9 +530,10 @@ public class TransactionListView extends VerticalLayout implements BeforeEnterOb
             actions.setSpacing(true);
             actions.getStyle().set("margin-top", "0.5rem");
 
-            VerticalLayout layout = new VerticalLayout(formLayout, actions);
+            VerticalLayout layout = new VerticalLayout(presetButtonLayout, formLayout, actions); // Add presetButtonLayout here
             layout.setPadding(false);
             layout.setSpacing(false);
+            layout.setAlignItems(FlexComponent.Alignment.STRETCH); // Stretch items to fill width
 
             filterDialog.add(layout);
         }
