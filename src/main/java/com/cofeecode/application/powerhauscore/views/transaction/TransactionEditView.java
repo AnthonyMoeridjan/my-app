@@ -41,6 +41,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files; // Re-adding for Files.deleteIfExists and Files.copy
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import jakarta.annotation.security.RolesAllowed;
 import org.springframework.data.domain.Pageable;
