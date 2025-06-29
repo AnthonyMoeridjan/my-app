@@ -40,7 +40,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
+import java.nio.file.Files; // Re-adding for Files.deleteIfExists and Files.copy
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import jakarta.annotation.security.RolesAllowed;
 import org.springframework.data.domain.Pageable;
@@ -61,7 +63,7 @@ import java.util.Optional;
 public class TransactionEditView extends Div implements BeforeEnterObserver {
 
     private final String TRANSACTION_ID = "transactionID";
-    private static final String UPLOAD_DIRECTORY = "D:/Java Projects/my-app/uploads"; // Directory where uploaded files will be stored
+    // private static final String UPLOAD_DIRECTORY = "D:/Java Projects/my-app/uploads"; // Removed
 
     // Fields to store filter parameters
     private String extraFilterValue;
@@ -96,16 +98,15 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
     private final Button delete = new Button("Delete", event -> deleteTransaction());
     private final Button editButton = new Button("Edit");
 
-
-    private Upload upload;
-    private FileBuffer fileBuffer;
-    private Image imagePreview;
-    private IFrame  pdfViewer;
-    private String uploadedFilePath;
-
-    private OrderedList imageContainer;
-
-    private final Button deleteFileButton = new Button("Delete File", event -> deleteFile());
+    // --- Photo Upload Fields ---
+    private FileBuffer photoFileBuffer;
+    private Upload photoUpload;
+    private Image photoPreview;
+    private Button downloadPhotoButton;
+    private Button deletePhotoButton;
+    private String tempUploadedPhotoPath; // To store path of newly uploaded file before saving transaction
+    private String currentPhotoFileName; // To store filename of existing photo for the transaction
+    // --- End Photo Upload Fields ---
 
     public TransactionEditView(TransactionService transactionService, ProjectService projectService, SettingsService settingsService, AuthenticatedUser authenticatedUser) {
         this.transactionService = transactionService;
@@ -285,79 +286,80 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
 //        vl21.getStyle().set("flex-grow", "1");
         vl21.add(vl211,hl212,description);
 
-        VerticalLayout vl22 = new VerticalLayout();
-        vl22.setWidth("min-content");
-        // Initialize file buffer to handle uploaded files
-        fileBuffer = new FileBuffer();
-        upload = new Upload(fileBuffer);
-        upload.setAcceptedFileTypes("image/jpeg", "application/pdf");
+        // --- Photo Upload UI ---
+        VerticalLayout photoLayout = new VerticalLayout();
+        photoLayout.setWidth("min-content");
+        photoLayout.setSpacing(true);
 
-// Image preview for JPG files
-        imagePreview = new Image();
-        imagePreview.setVisible(false);
-        imagePreview.setMaxWidth("200px");
+        photoFileBuffer = new FileBuffer();
+        photoUpload = new Upload(photoFileBuffer);
+        photoUpload.setAcceptedFileTypes("image/jpeg", "image/png");
+        photoUpload.setMaxFiles(1);
+        Span photoLabel = new Span("Transaction Photo");
 
-// Image preview
-        imagePreview = new Image();
-        imagePreview.setVisible(false);
-        imagePreview.setMaxWidth("400px");
+        photoPreview = new Image();
+        photoPreview.setMaxWidth("300px");
+        photoPreview.setMaxHeight("300px");
+        photoPreview.setVisible(false);
 
-// PDF viewer (embedded in page)
-        pdfViewer = new IFrame();
-        pdfViewer.setVisible(false);
-        pdfViewer.setSizeFull();  // Makes it responsive
+        downloadPhotoButton = new Button("Download Photo");
+        downloadPhotoButton.setVisible(false);
+        deletePhotoButton = new Button("Delete Photo");
+        deletePhotoButton.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        deletePhotoButton.setVisible(false);
 
-// Handle file upload success
-        upload.addSucceededListener(event -> {
-            try {
-                // Get the original uploaded filename
-                String originalFileName = event.getFileName();
-
-                // Get the upload directory from settings
-                String userDefinedPath = settingsService.getUploadDirectory();
-                File uploadDir = new File(userDefinedPath);
-                if (!uploadDir.exists()) {
-                    uploadDir.mkdirs(); // create the folder if it doesn't exist
-                }
-
-                // Save the file temporarily under the original name
-                File tempFile = new File(uploadDir, originalFileName);
-                try (InputStream inputStream = fileBuffer.getInputStream();
-                     OutputStream outputStream = new FileOutputStream(tempFile)) {
-                    inputStream.transferTo(outputStream);
-                }
-
-                // Store the temporary file path for renaming later
-                uploadedFilePath = tempFile.getAbsolutePath();
-
-                // Build preview URL (assumes /uploads maps to your upload directory)
-                String fileUrl = "/uploads/" + tempFile.getName();
-
-                // Show preview: image or PDF
-                if (originalFileName.toLowerCase().endsWith(".jpg")
-                        || originalFileName.toLowerCase().endsWith(".jpeg")
-                        || originalFileName.toLowerCase().endsWith(".png")) {
-                    imagePreview.setSrc(fileUrl);
-                    imagePreview.setVisible(true);
-                    pdfViewer.setVisible(false);
-                } else if (originalFileName.toLowerCase().endsWith(".pdf")) {
-                    pdfViewer.setSrc(fileUrl);
-                    pdfViewer.setVisible(true);
-                    imagePreview.setVisible(false);
-                }
-
-                deleteFileButton.setVisible(true);
-
-                Notification.show("File uploaded successfully", 3000, Notification.Position.TOP_CENTER);
-
-            } catch (IOException e) {
-                Notification.show("Upload failed: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        downloadPhotoButton.addClickListener(e -> {
+            if (currentPhotoFileName != null && !currentPhotoFileName.isEmpty()) {
+                UI.getCurrent().getPage().open("/files/download/" + currentPhotoFileName, "_blank");
+            } else {
+                Notification.show("No photo to download.", 3000, Notification.Position.MIDDLE);
             }
         });
 
-        vl22.add(upload,deleteFileButton);
-        hl2.add(vl21,vl22, imagePreview, pdfViewer);
+        deletePhotoButton.addClickListener(e -> deletePhoto());
+
+        HorizontalLayout photoButtons = new HorizontalLayout(downloadPhotoButton, deletePhotoButton);
+        // photoButtons.setVisible(false); // Visibility of individual buttons is handled by updatePhotoComponentVisibility
+
+        photoLayout.add(photoLabel, photoUpload, photoPreview, photoButtons);
+
+        // --- Photo Upload Event Handling ---
+        photoUpload.addSucceededListener(event -> {
+            try (InputStream inputStream = photoFileBuffer.getInputStream()) {
+                File tempDir = Files.createTempDirectory("temp-upload-").toFile();
+                File tempFile = new File(tempDir, event.getFileName());
+                Files.copy(inputStream, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+                tempUploadedPhotoPath = tempFile.getAbsolutePath(); // Store path for later processing in save()
+                photoPreview.setSrc("file:///" + tempUploadedPhotoPath); // Temporary local preview
+                photoPreview.setVisible(true);
+                Notification.show("Photo '" + event.getFileName() + "' uploaded. Save transaction to confirm.", 3000, Notification.Position.MIDDLE);
+                // Do not show download/delete for a temp file that isn't yet persisted with the transaction
+                downloadPhotoButton.setVisible(false);
+                deletePhotoButton.setVisible(false);
+                photoButtons.setVisible(false);
+            } catch (IOException e) {
+                Notification.show("Photo upload failed: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                tempUploadedPhotoPath = null;
+            }
+        });
+
+        photoUpload.addFileRejectedListener(event -> {
+            Notification.show("Photo rejected: " + event.getErrorMessage(), 5000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        });
+
+        photoUpload.addFailedListener(event -> {
+            Notification.show("Photo upload failed: " + event.getReason().getMessage(), 5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            tempUploadedPhotoPath = null;
+        });
+        // --- End Photo Upload Event Handling ---
+
+        // --- End Photo Upload UI ---
+
+        hl2.add(vl21, photoLayout); // Add vl21 and photoLayout
         add(hl2);
 
         HorizontalLayout hl3 = new HorizontalLayout();
@@ -413,10 +415,11 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
         lener.setReadOnly(readOnly);
         project.setReadOnly(readOnly);
         transactionTypeRadio.setReadOnly(readOnly);
-        upload.setVisible(!readOnly);
+        photoUpload.setVisible(!readOnly);
 
-        boolean canShowDeleteFileButton = !readOnly && uploadedFilePath != null && !uploadedFilePath.isEmpty();
-        deleteFileButton.setVisible(canShowDeleteFileButton);
+        // Visibility of download/delete buttons is handled by updatePhotoComponentVisibility
+        // based on currentPhotoFileName and not directly by readOnly state here,
+        // but upload component itself should be hidden in readOnly mode.
 
 
         // For PriceField, we need to make sure the currency selector is also read-only.
@@ -486,54 +489,9 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
 
         binder.bindInstanceFields(this);
     }
-    //TODO: implement delete via RESTAPI
-    private void deleteFile() {
-        if (uploadedFilePath == null || uploadedFilePath.isEmpty()) {
-            Notification.show("No file to delete.", 3000, Notification.Position.BOTTOM_START);
-            return;
-        }
 
-        File file = new File(uploadedFilePath);
-        if (file.exists() && file.delete()) {
-            Notification.show("File deleted successfully.", 3000, Notification.Position.BOTTOM_START);
-            uploadedFilePath = null;
-            imagePreview.setVisible(false);
-            pdfViewer.setVisible(false);
-            deleteFileButton.setVisible(false);
-
-            // Optional: remove from transaction if already set
-            transaction.setFilePath(null);
-        } else {
-            Notification.show("Failed to delete file.", 5000, Notification.Position.BOTTOM_START)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-        }
-//        String fileName = new File(uploadedFilePath).getName(); // Extract just the filename
-//        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8);
-//        String deleteUrl = "/uploads/" + encodedFileName;
-//
-//        try {
-//            HttpRequest request = HttpRequest.newBuilder()
-//                    .uri(URI.create("http://localhost:8080" + deleteUrl)) // Full URL
-//                    .DELETE()
-//                    .build();
-//
-//            HttpResponse<String> response = HttpClient.newHttpClient()
-//                    .send(request, HttpResponse.BodyHandlers.ofString());
-//
-//            if (response.statusCode() == 200) {
-//                Notification.show("File deleted successfully.", 3000, Notification.Position.BOTTOM_START);
-//                uploadedFilePath = null;
-//                imagePreview.setVisible(false);
-//                pdfViewer.setVisible(false);
-//            } else {
-//                Notification.show("Failed to delete file: " + response.body(), 5000, Notification.Position.BOTTOM_START)
-//                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-//            }
-//        } catch (Exception e) {
-//            Notification.show("Error deleting file: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START)
-//                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-//        }
-    }
+    // Removed deleteFile() method
+    // private void deleteFile() { ... }
 
     private void populateProjectData() {
         List<Project> projects = projectService.list(Pageable.unpaged()).getContent(); // Fetch all projects
@@ -596,92 +554,121 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
             btw.setValue(new Money("0.00", "SRD"));
             category.clear();
             project.clear();
-            uploadedFilePath = null;
-            imagePreview.setVisible(false);
-            pdfViewer.setVisible(false);
+            currentPhotoFileName = null;
+            tempUploadedPhotoPath = null;
+            updatePhotoComponentVisibility();
         } else {
             binder.readBean(transaction);
             amount.getCurrency().setValue(transaction.getCurrency());
-            uploadedFilePath = transaction.getFilePath();
-            if (uploadedFilePath != null) {
-                String fileUrl = "/uploads/" + new File(uploadedFilePath).getName(); // Use HTTP URL
+            currentPhotoFileName = transaction.getFilePath(); // Use existing filePath for photo
+            tempUploadedPhotoPath = null; // Clear any pending new upload
+            updatePhotoComponentVisibility();
 
-                if (uploadedFilePath.endsWith(".jpg")) {
-                    imagePreview.setSrc(fileUrl);
-                    imagePreview.setVisible(true);
-                    pdfViewer.setVisible(false);
-                } else if (uploadedFilePath.endsWith(".pdf")) {
-                    pdfViewer.setSrc(fileUrl);
-                    pdfViewer.setVisible(true);
-                    imagePreview.setVisible(false);
-                }
-                deleteFileButton.setVisible(true);
-            } else {
-                deleteFileButton.setVisible(false);
-            }
             if (transaction.getProject() != null) {
                 project.setValue(transaction.getProject());
             }
-
         }
         setFieldsReadOnly(!isEditMode); // Ensure fields read-only state is set based on current mode
     }
 
+    private void deletePhoto() {
+        if (currentPhotoFileName == null || currentPhotoFileName.isEmpty()) {
+            Notification.show("No photo to delete.", 3000, Notification.Position.MIDDLE);
+            return;
+        }
+
+        // Confirm dialog can be added here for better UX
+        // For now, direct delete:
+
+        try {
+            Path photoPath = Paths.get(settingsService.getUploadDirectory(), currentPhotoFileName);
+            Files.deleteIfExists(photoPath);
+
+            transaction.setFilePath(null);
+            transactionService.update(transaction); // Save the transaction with null filePath
+
+            currentPhotoFileName = null; // Clear current filename
+            tempUploadedPhotoPath = null; // Clear any pending upload
+            updatePhotoComponentVisibility(); // Update UI
+
+            Notification.show("Photo deleted successfully.", 3000, Notification.Position.MIDDLE);
+        } catch (IOException e) {
+            Notification.show("Error deleting photo: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    private void updatePhotoComponentVisibility() {
+        boolean photoExists = currentPhotoFileName != null && !currentPhotoFileName.isEmpty();
+        photoPreview.setVisible(photoExists);
+        downloadPhotoButton.setVisible(photoExists);
+        deletePhotoButton.setVisible(photoExists);
+        // photoButtons layout visibility could also be controlled here if it's a separate container for both buttons.
+        // For now, individual visibility is fine.
+        if (photoExists) {
+            photoPreview.setSrc("/files/view/" + currentPhotoFileName);
+        } else {
+            photoPreview.setSrc(""); // Clear src with empty string to avoid ambiguity
+        }
+    }
+
     private void save() {
         try {
-            // Bind UI fields to the transaction object
-            binder.writeBean(transaction);
+            binder.writeBean(transaction); // Write other fields first
 
-            boolean isNew = (transaction.getId() == null);
-
-            // Step 1: Persist transaction to get the ID (if new)
-            if (isNew) {
-                transactionService.create(transaction);
-                Notification.show("Transaction created");
-            } else {
-                transactionService.update(transaction);
-                Notification.show("Transaction updated");
-            }
-
-            // Step 2: Handle uploaded file renaming
-            if (uploadedFilePath != null && !uploadedFilePath.isEmpty()) {
-                Long transactionId = transaction.getId(); // must exist now
-                if (transactionId != null) {
-                    File originalFile = new File(uploadedFilePath);
-                    if (originalFile.exists()) {
-                        // Get the file extension
-                        String extension = "";
-                        int dotIndex = uploadedFilePath.lastIndexOf('.');
-                        if (dotIndex > 0 && dotIndex < uploadedFilePath.length() - 1) {
-                            extension = uploadedFilePath.substring(dotIndex + 1);
-                        }
-
-                        // Create target file path
-                        String targetFileName = transactionId + (extension.isEmpty() ? "" : "." + extension);
-                        File targetFile = new File(settingsService.getUploadDirectory(), targetFileName);
-
-                        if (!originalFile.getName().equals(targetFileName)) {
-                            try {
-                                Files.move(originalFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                                uploadedFilePath = targetFile.getAbsolutePath();
-                                transaction.setFilePath(uploadedFilePath);
-                                transactionService.update(transaction); // Update path in DB
-                            } catch (IOException ioException) {
-                                Notification.show("Error renaming uploaded file: " + ioException.getMessage(),
-                                                5000, Notification.Position.BOTTOM_START)
-                                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                            }
-                        }
-                    } else {
-                        Notification.show("Uploaded file not found on disk.", 4000, Notification.Position.BOTTOM_START);
+            // Handle photo file processing
+            if (tempUploadedPhotoPath != null && !tempUploadedPhotoPath.isEmpty()) {
+                // New photo was uploaded or existing one replaced
+                File tempFile = new File(tempUploadedPhotoPath);
+                if (tempFile.exists()) {
+                    // Persist transaction first if it's new, to get an ID for the filename
+                    if (transaction.getId() == null) {
+                        transactionService.create(transaction); // Create to get ID
+                        Notification.show("Transaction created. Saving photo...");
                     }
-                } else {
-                    Notification.show("Transaction ID not available for file rename.", 4000, Notification.Position.BOTTOM_START);
+
+                    // Delete old photo if exists and filename is changing or was present
+                    if (currentPhotoFileName != null && !currentPhotoFileName.isEmpty()) {
+                        try {
+                            Path oldPhotoPath = Paths.get(settingsService.getUploadDirectory(), currentPhotoFileName);
+                            Files.deleteIfExists(oldPhotoPath);
+                        } catch (IOException e) {
+                            Notification.show("Could not delete old photo: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                        }
+                    }
+
+                    String originalFileName = tempFile.getName();
+                    String extension = "";
+                    int dotIndex = originalFileName.lastIndexOf('.');
+                    if (dotIndex > 0 && dotIndex < originalFileName.length() - 1) {
+                        extension = originalFileName.substring(dotIndex); // includes the dot e.g. ".jpg"
+                    }
+                    String newFileName = transaction.getId() + extension;
+                    Path targetPath = Paths.get(settingsService.getUploadDirectory(), newFileName);
+
+                    try {
+                        Files.copy(tempFile.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+                        transaction.setFilePath(newFileName); // Save new file name
+                        currentPhotoFileName = newFileName; // Update current filename
+                        tempUploadedPhotoPath = null; // Clear temp path
+                        if(tempFile.exists()) tempFile.delete(); // Delete temp file after copy
+                        if(tempFile.getParentFile().exists()) tempFile.getParentFile().delete(); // Delete temp directory
+
+                    } catch (IOException e) {
+                        Notification.show("Error saving photo: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                        transaction.setFilePath(currentPhotoFileName); // Revert to old filename if save fails
+                    }
                 }
             }
+            // If no new photo was uploaded, transaction.getFilePath() (currentPhotoFileName) remains as is or null
+
+            transactionService.update(transaction); // Update transaction with new/old/null filePath
+            Notification.show(transaction.getId() == null || (tempUploadedPhotoPath != null && !new File(tempUploadedPhotoPath).exists()) ? "Transaction updated." : "Transaction and photo updated.");
+
 
             // Exit edit mode
             isEditMode = false;
+            updatePhotoComponentVisibility(); // Update preview based on saved state
             setFieldsReadOnly(true);
             updateButtonStates();
 
