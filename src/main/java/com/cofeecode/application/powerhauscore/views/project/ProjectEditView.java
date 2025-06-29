@@ -105,14 +105,26 @@ public class ProjectEditView extends Div implements BeforeEnterObserver {
         // For simplicity, let's assume direct binding or a simple converter for budget.
         binder.forField(budget)
                 .withConverter(
-                        price -> price != null ? price.getAmountBigDecimal() : null, // Method to get BigDecimal from PriceField
-                        bigDecimal -> bigDecimal != null ? new PriceField.Price(bigDecimal, budget.getCurrency().getValue()) : null // Method to set PriceField from BigDecimal
-                ).bind(Project::getBudget, Project::setBudget);
+                        // Convert Money (from PriceField) to BigDecimal (for Project.budget)
+                        money -> money != null && money.getAmount() != null && !money.getAmount().isEmpty() ? new java.math.BigDecimal(money.getAmount()) : null,
+                        // Convert BigDecimal (from Project.budget) to Money (for PriceField)
+                        bigDecimal -> bigDecimal != null ? new com.cofeecode.application.powerhauscore.customfield.Money(bigDecimal.toString(), budget.getCurrency().getValue()) : null,
+                        "Invalid budget format" // Error message for conversion failure
+                ).bind(Project::getBudget, (projectBean, budgetBigDecimal) -> {
+                    projectBean.setBudget(budgetBigDecimal);
+                    // If the Project entity needs to store currency separately, set it here:
+                    // projectBean.setCurrency(budget.getCurrency().getValue());
+                });
 
         budget.getCurrency().addValueChangeListener(event -> {
-            if (project != null && project.getBudget() != null) {
-                 // If you need to store currency with project, handle it here.
-                 // project.setCurrency(event.getValue()); // Example if Project entity has currency field
+            // This listener might be useful if the currency change itself should trigger
+            // a re-conversion or update, but the main conversion handles currency on save.
+            // If project.budget is already bound, changing currency might require re-setting the Money object in PriceField
+            // if the display needs to update immediately based on a new currency for the same BigDecimal value.
+            // For now, the currency is captured when converting BigDecimal to Money for display/saving.
+            if (binder.getBean() != null && binder.getBean().getBudget() != null) {
+                // Optionally, re-set the field's value to trigger re-conversion with new currency for display
+                // budget.setValue(new com.cofeecode.application.powerhauscore.customfield.Money(binder.getBean().getBudget().toString(), event.getValue()));
             }
         });
 
