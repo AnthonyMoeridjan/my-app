@@ -1,6 +1,8 @@
 package com.cofeecode.application.powerhauscore.data;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,7 +22,8 @@ public class Project extends AbstractEntity{
 //    @NotNull
     private BigDecimal budget;  // Budget allocated for the project
 
-    private String status;  // Current status of the project (e.g., "In Progress", "Completed", "On Hold")
+    @Enumerated(EnumType.STRING)
+    private ProjectStatus status;  // Current status of the project
 
     private String client;  // Name of the client for whom the project is being executed
 
@@ -61,10 +64,10 @@ public class Project extends AbstractEntity{
     public void setBudget(BigDecimal budget) {
         this.budget = budget;
     }
-    public String getStatus() {
+    public ProjectStatus getStatus() {
         return status;
     }
-    public void setStatus(String status) {
+    public void setStatus(ProjectStatus status) {
         this.status = status;
     }
     public String getClient() {

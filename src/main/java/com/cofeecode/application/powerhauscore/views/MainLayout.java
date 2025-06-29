@@ -5,6 +5,7 @@ import com.cofeecode.application.powerhauscore.security.AuthenticatedUser;
 import com.cofeecode.application.powerhauscore.security.InactivityLogoutHandler;
 import com.cofeecode.application.powerhauscore.services.UserService;
 import com.cofeecode.application.powerhauscore.views.Projects.ProjectListView;
+import com.cofeecode.application.powerhauscore.views.project.ProjectDashboardView; // Added import
 import com.cofeecode.application.powerhauscore.views.checkoutform.CheckoutFormView;
 import com.cofeecode.application.powerhauscore.views.quote.QuoteListView;
 import com.cofeecode.application.powerhauscore.views.settings.SettingsView;
@@ -106,9 +107,14 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
             nav.addItem(new SideNavItem("Checkout Form", CheckoutFormView.class, LineAwesomeIcon.CREDIT_CARD.create()));
 
         }
+        // Adding new Project Dashboard View link
+        if (accessChecker.hasAccess(ProjectDashboardView.class)) {
+            nav.addItem(
+                    new SideNavItem("Projects", ProjectDashboardView.class, LineAwesomeIcon.PROJECT_DIAGRAM_SOLID.create()));
+        }
         if (accessChecker.hasAccess(ProjectListView.class)) {
             nav.addItem(
-                    new SideNavItem("Project-List", ProjectListView.class, LineAwesomeIcon.CALENDAR.create()));
+                    new SideNavItem("Project-List (Legacy?)", ProjectListView.class, LineAwesomeIcon.CALENDAR.create())); // Renamed for clarity if it's old
         }
         if (accessChecker.hasAccess(UserListView.class)) {
             nav.addItem(
