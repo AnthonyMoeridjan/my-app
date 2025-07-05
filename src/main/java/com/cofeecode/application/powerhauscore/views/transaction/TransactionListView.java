@@ -397,6 +397,19 @@ public class TransactionListView extends VerticalLayout implements BeforeEnterOb
         grid.addColumn("btw").setHeader("BTW").setAutoWidth(true);
         grid.addColumn("extra").setHeader("Extra Info").setAutoWidth(true);
 
+        // Add filePath column
+        grid.addComponentColumn(transaction -> {
+            if (transaction.getFilePath() == null || transaction.getFilePath().isEmpty()) {
+                Icon warningIcon = VaadinIcon.WARNING.create();
+                warningIcon.setColor("var(--lumo-error-text-color)");
+                Span warningText = new Span("No file uploaded");
+                warningText.getStyle().set("color", "var(--lumo-error-text-color)");
+                return new HorizontalLayout(warningIcon, warningText);
+            } else {
+                return new Text(transaction.getFilePath());
+            }
+        }).setHeader("File Path").setAutoWidth(true);
+
         grid.setItems(query -> transactionService.list(
                 PageRequest.of(query.getPage(), query.getPageSize(), VaadinSpringDataHelpers.toSpringDataSort(query))
         ).stream());

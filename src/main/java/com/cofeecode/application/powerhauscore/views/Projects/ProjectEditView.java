@@ -29,7 +29,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 @PageTitle("Edit Project")
-@Route(value = "projects/:projectID?/edit", layout = MainLayout.class)
+//@Route(value = "projects/:projectID?/edit", layout = MainLayout.class)
 @RolesAllowed({"USER","RVC", "HR", "ADMIN"})
 public class ProjectEditView extends Div implements BeforeEnterObserver {
 

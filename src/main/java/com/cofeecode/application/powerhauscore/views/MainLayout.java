@@ -112,10 +112,10 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
             nav.addItem(
                     new SideNavItem("Projects", ProjectDashboardView.class, LineAwesomeIcon.PROJECT_DIAGRAM_SOLID.create()));
         }
-        if (accessChecker.hasAccess(ProjectListView.class)) {
-            nav.addItem(
-                    new SideNavItem("Project-List (Legacy?)", ProjectListView.class, LineAwesomeIcon.CALENDAR.create())); // Renamed for clarity if it's old
-        }
+//        if (accessChecker.hasAccess(ProjectListView.class)) {
+//            nav.addItem(
+//                    new SideNavItem("Project-List (Legacy?)", ProjectListView.class, LineAwesomeIcon.CALENDAR.create())); // Renamed for clarity if it's old
+//        }
         if (accessChecker.hasAccess(UserListView.class)) {
             nav.addItem(
                     new SideNavItem("Users", UserListView.class, LineAwesomeIcon.USER_COG_SOLID.create()));
