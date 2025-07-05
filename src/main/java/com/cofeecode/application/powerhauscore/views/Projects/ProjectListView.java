@@ -20,7 +20,7 @@ import jakarta.annotation.security.RolesAllowed;
 import java.util.List;
 
 @PageTitle("Projects")
-@Route(value = "projects", layout = MainLayout.class)
+//@Route(value = "projects", layout = MainLayout.class)
 @RolesAllowed({"USER", "RVC", "HR", "ADMIN"})
 @Uses(Icon.class)
 public class ProjectListView extends Div {
