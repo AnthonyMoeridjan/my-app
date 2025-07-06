@@ -103,6 +103,7 @@ public class WorkerMasterDetailView extends Div implements BeforeEnterObserver {
         splitLayout.setSizeFull();
         createGridLayout(splitLayout); // This will add filterStatus and grid to the layout
         createEditorLayout(splitLayout);
+        splitLayout.setSplitterPosition(70);
         add(splitLayout);
 
         // Configure Grid columns
