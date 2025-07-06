@@ -90,15 +90,18 @@ public class WorkerMasterDetailView extends Div implements BeforeEnterObserver {
     public WorkerMasterDetailView(WorkerService workerService) {
         this.workerService = workerService;
         addClassNames("master-detail-view");
+        setSizeFull();
 
+        // Initialize filterStatus first
         filterStatus = new ComboBox<>("Filter Workers");
-        filterStatus.setItems("Show All","Active", "Inactive");
+        filterStatus.setItems("Show All", "Active", "Inactive");
         filterStatus.setValue("Active"); // Default selection
         filterStatus.addValueChangeListener(e -> refreshGrid());
 
         // Create UI with a split layout: grid on the left, form on the right
         SplitLayout splitLayout = new SplitLayout();
-        createGridLayout(splitLayout);
+        splitLayout.setSizeFull();
+        createGridLayout(splitLayout); // This will add filterStatus and grid to the layout
         createEditorLayout(splitLayout);
         add(splitLayout);
 
@@ -112,22 +115,9 @@ public class WorkerMasterDetailView extends Div implements BeforeEnterObserver {
         grid.addColumn(worker -> worker.isActive() ? "Active" : "Inactive")
                 .setHeader("Status")
                 .setAutoWidth(true);
-//        grid.addComponentColumn(worker -> {
-//            Button toggleActive = new Button(worker.isActive() ? "Deactivate" : "Activate", click -> {
-//                workerService.toggleActive(worker.getId());
-//                refreshGrid();
-//            });
-//            toggleActive.addThemeVariants(worker.isActive() ? ButtonVariant.LUMO_ERROR : ButtonVariant.LUMO_SUCCESS);
-//            return toggleActive;
-//        }).setHeader("Toggle Active");
 
-        grid.setItems(query ->
-                workerService.list(PageRequest.of(
-                        query.getPage(),
-                        query.getPageSize(),
-                        VaadinSpringDataHelpers.toSpringDataSort(query)
-                )).stream()
-        );
+        // Initial data load is handled by refreshGrid() called after filter initialization
+        refreshGrid();
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
 
         // Click on a row to edit that Worker
@@ -291,8 +281,9 @@ public class WorkerMasterDetailView extends Div implements BeforeEnterObserver {
         // Ensure the filter and grid are stacked vertically
         VerticalLayout layout = new VerticalLayout(filterStatus, grid);
         layout.setSizeFull(); // Ensure it takes up available space
-        layout.setPadding(false);
+        layout.setPadding(true);
         layout.setSpacing(true);
+        layout.expand(grid);
 
         grid.setSizeFull(); // Ensure the grid fills the space
         wrapper.setSizeFull();
