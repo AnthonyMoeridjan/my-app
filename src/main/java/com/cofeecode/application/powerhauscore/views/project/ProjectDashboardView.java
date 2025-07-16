@@ -53,6 +53,8 @@ public class ProjectDashboardView extends VerticalLayout {
         grid.addColumn(Project::getStartDate).setHeader("Start Date").setSortable(true);
         grid.addColumn(Project::getEndDate).setHeader("End Date").setSortable(true);
         grid.addColumn(Project::getManager).setHeader("Manager").setSortable(true);
+        grid.addColumn(Project::getQuoteAmount).setHeader("Quote Amount").setSortable(true);
+        grid.addColumn(Project::getInvoiceAmount).setHeader("Invoice Amount").setSortable(true);
 
         grid.asSingleSelect().addValueChangeListener(event -> {
             if (event.getValue() != null) {

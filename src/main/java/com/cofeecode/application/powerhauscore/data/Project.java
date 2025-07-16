@@ -1,25 +1,26 @@
 package com.cofeecode.application.powerhauscore.data;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @Entity
-public class Project extends AbstractEntity{
-//    @NotBlank
+public class Project extends AbstractEntity {
+    //    @NotBlank
     private String name;  // Name of the project
 
     private String description;  // Detailed description of the project
 
-//    @NotNull
+    //    @NotNull
     private LocalDate startDate;  // Start date of the project
 
     private LocalDate endDate;  // End date of the project (can be null if ongoing)
 
-//    @NotNull
+    //    @NotNull
     private BigDecimal budget;  // Budget allocated for the project
 
     @Enumerated(EnumType.STRING)
@@ -32,6 +33,17 @@ public class Project extends AbstractEntity{
     private String location;  // Location where the project is being carried out
 
     private boolean isPriority;  // Indicates if the project is a priority
+
+    private String quoteFile;
+    private BigDecimal quoteAmount;
+    private String invoiceFile;
+    private BigDecimal invoiceAmount;
+
+    @ElementCollection
+    @CollectionTable(name = "project_status_timestamps", joinColumns = @JoinColumn(name = "project_id"))
+    @MapKeyColumn(name = "status")
+    @Column(name = "timestamp")
+    private Map<ProjectStatus, LocalDateTime> statusTimestamps = new HashMap<>();
 
     // Getters and Setters
     public String getName() {
@@ -93,5 +105,45 @@ public class Project extends AbstractEntity{
     }
     public void setPriority(boolean isPriority) {
         this.isPriority = isPriority;
+    }
+
+    public String getQuoteFile() {
+        return quoteFile;
+    }
+
+    public void setQuoteFile(String quoteFile) {
+        this.quoteFile = quoteFile;
+    }
+
+    public BigDecimal getQuoteAmount() {
+        return quoteAmount;
+    }
+
+    public void setQuoteAmount(BigDecimal quoteAmount) {
+        this.quoteAmount = quoteAmount;
+    }
+
+    public String getInvoiceFile() {
+        return invoiceFile;
+    }
+
+    public void setInvoiceFile(String invoiceFile) {
+        this.invoiceFile = invoiceFile;
+    }
+
+    public BigDecimal getInvoiceAmount() {
+        return invoiceAmount;
+    }
+
+    public void setInvoiceAmount(BigDecimal invoiceAmount) {
+        this.invoiceAmount = invoiceAmount;
+    }
+
+    public Map<ProjectStatus, LocalDateTime> getStatusTimestamps() {
+        return statusTimestamps;
+    }
+
+    public void setStatusTimestamps(Map<ProjectStatus, LocalDateTime> statusTimestamps) {
+        this.statusTimestamps = statusTimestamps;
     }
 }
