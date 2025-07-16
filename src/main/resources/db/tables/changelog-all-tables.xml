@@ -305,4 +305,6 @@
         </createTable>
     </changeSet>
 
+    <include file="db/tables/changelog-project-updates.xml"/>
+
 </databaseChangeLog>

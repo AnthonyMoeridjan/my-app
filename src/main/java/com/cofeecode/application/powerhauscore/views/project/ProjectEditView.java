@@ -20,6 +20,8 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.upload.Upload;
+import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.data.binder.ValidationException;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -29,6 +31,8 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @PageTitle("Edit Project")
@@ -54,6 +58,11 @@ public class ProjectEditView extends Div implements BeforeEnterObserver {
     private TextField manager = new TextField("Manager");
     private TextField location = new TextField("Location");
     private Checkbox isPriority = new Checkbox("Is Priority?");
+
+    private TextField quoteAmount = new TextField("Quote Amount");
+    private Upload quoteFile = new Upload(new MemoryBuffer());
+    private TextField invoiceAmount = new TextField("Invoice Amount");
+    private Upload invoiceFile = new Upload(new MemoryBuffer());
 
     private Button save = new Button("Save");
     private Button cancel = new Button("Cancel");
@@ -132,6 +141,34 @@ public class ProjectEditView extends Div implements BeforeEnterObserver {
         status.setItems(ProjectStatus.values());
         status.setItemLabelGenerator(ProjectStatus::getDisplayName);
 
+        binder.forField(quoteAmount)
+                .withConverter(
+                        s -> s == null || s.isEmpty() ? null : new BigDecimal(s),
+                        bd -> bd == null ? "" : bd.toString(),
+                        "Invalid number")
+                .bind(Project::getQuoteAmount, Project::setQuoteAmount);
+
+        binder.forField(invoiceAmount)
+                .withConverter(
+                        s -> s == null || s.isEmpty() ? null : new BigDecimal(s),
+                        bd -> bd == null ? "" : bd.toString(),
+                        "Invalid number")
+                .bind(Project::getInvoiceAmount, Project::setInvoiceAmount);
+
+        quoteFile.addSucceededListener(event -> {
+            MemoryBuffer buffer = (MemoryBuffer) quoteFile.getReceiver();
+            String fileName = event.getFileName();
+            // In a real app, you'd save the file and get a path
+            project.setQuoteFile(fileName);
+        });
+
+        invoiceFile.addSucceededListener(event -> {
+            MemoryBuffer buffer = (MemoryBuffer) invoiceFile.getReceiver();
+            String fileName = event.getFileName();
+            // In a real app, you'd save the file and get a path
+            project.setInvoiceFile(fileName);
+        });
+
         binder.bindInstanceFields(this);
     }
 
@@ -162,7 +199,7 @@ public class ProjectEditView extends Div implements BeforeEnterObserver {
 
     private FormLayout createFormLayout() {
         FormLayout formLayout = new FormLayout();
-        formLayout.add(name, description, startDate, endDate, budget, status, client, manager, location, isPriority);
+        formLayout.add(name, description, startDate, endDate, budget, status, client, manager, location, isPriority, quoteAmount, quoteFile, invoiceAmount, invoiceFile);
         // Adjust column span for wider fields like description
         formLayout.setColspan(description, 2);
         return formLayout;
@@ -210,6 +247,10 @@ public class ProjectEditView extends Div implements BeforeEnterObserver {
         manager.setReadOnly(readOnly);
         location.setReadOnly(readOnly);
         isPriority.setReadOnly(readOnly);
+        quoteAmount.setReadOnly(readOnly);
+        quoteFile.setVisible(!readOnly);
+        invoiceAmount.setReadOnly(readOnly);
+        invoiceFile.setVisible(!readOnly);
     }
 
 
@@ -231,7 +272,15 @@ public class ProjectEditView extends Div implements BeforeEnterObserver {
 
     private void saveProject() {
         try {
+            Project originalProject = projectService.get(project.getId()).orElse(null);
+            ProjectStatus originalStatus = (originalProject != null) ? originalProject.getStatus() : null;
+
             binder.writeBean(project);
+
+            if (project.getStatus() != originalStatus) {
+                project.getStatusTimestamps().put(project.getStatus(), java.time.LocalDateTime.now());
+            }
+
             if (project.getId() == null) {
                 projectService.create(project);
                 Notification.show("Project created successfully.", 3000, Notification.Position.BOTTOM_START)

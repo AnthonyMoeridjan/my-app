@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="add-project-quote-invoice-columns" author="jules">
+        <addColumn tableName="project">
+            <column name="quote_file" type="VARCHAR(255)"/>
+            <column name="quote_amount" type="DECIMAL(19, 2)"/>
+            <column name="invoice_file" type="VARCHAR(255)"/>
+            <column name="invoice_amount" type="DECIMAL(19, 2)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="create-project-status-timestamps-table" author="jules">
+        <createTable tableName="project_status_timestamps">
+            <column name="project_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_project_status_timestamps_project" references="project(id)"/>
+            </column>
+            <column name="status" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="timestamp" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="project_status_timestamps" columnNames="project_id, status"/>
+    </changeSet>
+
+</databaseChangeLog>
