@@ -58,7 +58,7 @@ public class ProjectDashboardView extends VerticalLayout {
 
         grid.asSingleSelect().addValueChangeListener(event -> {
             if (event.getValue() != null) {
-                UI.getCurrent().navigate(ProjectEditView.class + "/" + event.getValue().getId());
+                UI.getCurrent().navigate("projects/" + event.getValue().getId() + "/edit");
             }
         });
     }
