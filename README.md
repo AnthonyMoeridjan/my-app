@@ -24,6 +24,8 @@ Once the JAR file is built, you can run it using
 
 ## Project structure
 
+The project structure includes multiple example views. The new lead management feature lives under `src/main/java/com/cofeecode/application/powerhauscore/views/lead`. Use `/leads` in your browser to manage incoming business leads and convert them to active projects. Existing project views remain under `views/project` for comparison.
+
 - `MainLayout.java` in `src/main/java` contains the navigation setup (i.e., the
   side/top bar and the main menu). This setup uses
   [App Layout](https://vaadin.com/docs/components/app-layout).

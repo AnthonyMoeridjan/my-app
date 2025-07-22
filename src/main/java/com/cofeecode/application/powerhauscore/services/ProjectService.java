@@ -1,6 +1,7 @@
 package com.cofeecode.application.powerhauscore.services;
 
 import com.cofeecode.application.powerhauscore.data.Project;
+import com.cofeecode.application.powerhauscore.data.ProjectStatus;
 import com.cofeecode.application.powerhauscore.repository.ProjectRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -45,5 +46,18 @@ public class ProjectService {
 
     public List<Project> findAll() {
         return repository.findAll();
+    }
+
+    public List<Project> findByStatus(ProjectStatus status) {
+        return repository.findByStatus(status);
+    }
+
+    public Optional<Project> updateStatus(Long id, ProjectStatus status) {
+        Optional<Project> projectOpt = repository.findById(id);
+        projectOpt.ifPresent(p -> {
+            p.setStatus(status);
+            repository.save(p);
+        });
+        return projectOpt;
     }
 }
