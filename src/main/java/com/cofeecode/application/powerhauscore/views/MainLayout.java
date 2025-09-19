@@ -6,6 +6,9 @@ import com.cofeecode.application.powerhauscore.security.InactivityLogoutHandler;
 import com.cofeecode.application.powerhauscore.services.UserService;
 import com.cofeecode.application.powerhauscore.views.Projects.ProjectListView;
 import com.cofeecode.application.powerhauscore.views.project.ProjectDashboardView; // Added import
+import com.cofeecode.application.powerhauscore.views.accounting.AccountingDashboardView;
+import com.cofeecode.application.powerhauscore.views.accounting.AccountsPayableView;
+import com.cofeecode.application.powerhauscore.views.accounting.AccountsReceivableView;
 import com.cofeecode.application.powerhauscore.views.checkoutform.CheckoutFormView;
 import com.cofeecode.application.powerhauscore.views.quote.QuoteListView;
 import com.cofeecode.application.powerhauscore.views.settings.SettingsView;
@@ -131,6 +134,21 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
         if (accessChecker.hasAccess(SettingsView.class)) {
             nav.addItem(
                     new SideNavItem("Settings", SettingsView.class, LineAwesomeIcon.COG_SOLID.create()));
+        }
+
+        if (accessChecker.hasAccess(AccountsReceivableView.class) || accessChecker.hasAccess(AccountsPayableView.class)) {
+            SideNavItem accountingItem = new SideNavItem("Accounting");
+            accountingItem.setPrefixComponent(LineAwesomeIcon.FILE_INVOICE_SOLID.create());
+            if (accessChecker.hasAccess(AccountingDashboardView.class)) {
+                accountingItem.addItem(new SideNavItem("Dashboard", AccountingDashboardView.class, LineAwesomeIcon.CHART_BAR_SOLID.create()));
+            }
+            if (accessChecker.hasAccess(AccountsReceivableView.class)) {
+                accountingItem.addItem(new SideNavItem("Accounts Receivable", AccountsReceivableView.class, LineAwesomeIcon.FILE_INVOICE_DOLLAR_SOLID.create()));
+            }
+            if (accessChecker.hasAccess(AccountsPayableView.class)) {
+                accountingItem.addItem(new SideNavItem("Accounts Payable", AccountsPayableView.class, LineAwesomeIcon.FILE_INVOICE_DOLLAR_SOLID.create()));
+            }
+            nav.addItem(accountingItem);
         }
 
         return nav;

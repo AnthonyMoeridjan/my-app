@@ -101,7 +101,7 @@ public class TimesheetEditView extends VerticalLayout implements BeforeEnterObse
         projectSelect.setItems(projectService.findAll());
         projectSelect.setItemLabelGenerator(Project::getName);
 
-        earningsField.setReadOnly(true);
+        earningsField.setReadOnly(false);
         earningsField.setPrefixComponent(new Span("SRD"));
 
         HorizontalLayout earingsLayout = new HorizontalLayout();
