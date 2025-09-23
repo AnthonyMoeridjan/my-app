@@ -310,7 +310,7 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
 
         downloadPhotoButton.addClickListener(e -> {
             if (currentPhotoFileName != null && !currentPhotoFileName.isEmpty()) {
-                UI.getCurrent().getPage().open("/files/download/" + currentPhotoFileName, "_blank");
+                UI.getCurrent().getPage().open("/uploaded-images/" + currentPhotoFileName, "_blank");
             } else {
                 Notification.show("No photo to download.", 3000, Notification.Position.MIDDLE);
             }
@@ -606,7 +606,7 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
         // photoButtons layout visibility could also be controlled here if it's a separate container for both buttons.
         // For now, individual visibility is fine.
         if (photoExists) {
-            photoPreview.setSrc("/files/view/" + currentPhotoFileName);
+            photoPreview.setSrc("/uploaded-images/" + currentPhotoFileName);
         } else {
             photoPreview.setSrc(""); // Clear src with empty string to avoid ambiguity
         }
