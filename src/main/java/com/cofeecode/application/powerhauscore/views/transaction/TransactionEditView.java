@@ -9,6 +9,8 @@ import com.cofeecode.application.powerhauscore.security.AuthenticatedUser;
 import com.cofeecode.application.powerhauscore.services.ProjectService;
 import com.cofeecode.application.powerhauscore.services.SettingsService;
 import com.cofeecode.application.powerhauscore.services.TransactionService;
+import com.cofeecode.application.powerhauscore.services.ai.ReceiptExtractionResult;
+import com.cofeecode.application.powerhauscore.services.ai.ReceiptExtractionService;
 import com.cofeecode.application.powerhauscore.views.MainLayout;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -34,11 +36,7 @@ import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 
-import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files; // Re-adding for Files.deleteIfExists and Files.copy
 import java.nio.file.Path;
@@ -54,8 +52,11 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 //@PageTitle("Edit Transaction")
 @Route(value = "transactions/:transactionID?/edit", layout = MainLayout.class)
@@ -77,6 +78,7 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
     private final TransactionService transactionService;
     private final ProjectService projectService;
     private final SettingsService settingsService;
+    private final ReceiptExtractionService receiptExtractionService;
     private final AuthenticatedUser authenticatedUser;
     private Transaction transaction;
     private BeanValidationBinder<Transaction> binder;
@@ -93,6 +95,10 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
     private ComboBox<Project> project = new ComboBox<>("Project");
     private RadioButtonGroup<TransactionType> transactionTypeRadio = new RadioButtonGroup<>();
 
+    private final List<CategorieItems> categoryOptions = new ArrayList<>();
+    private final List<Dagboek> dagboekOptions = new ArrayList<>();
+    private List<Project> projectOptions = new ArrayList<>();
+
     private final Button save = new Button("Save", event -> save());
     private final Button cancel = new Button("Cancel", event -> cancel());
     private final Button delete = new Button("Delete", event -> deleteTransaction());
@@ -102,16 +108,18 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
     private FileBuffer photoFileBuffer;
     private Upload photoUpload;
     private Image photoPreview;
+    private Paragraph uploadedDocumentInfo;
     private Button downloadPhotoButton;
     private Button deletePhotoButton;
     private String tempUploadedPhotoPath; // To store path of newly uploaded file before saving transaction
     private String currentPhotoFileName; // To store filename of existing photo for the transaction
     // --- End Photo Upload Fields ---
 
-    public TransactionEditView(TransactionService transactionService, ProjectService projectService, SettingsService settingsService, AuthenticatedUser authenticatedUser) {
+    public TransactionEditView(TransactionService transactionService, ProjectService projectService, SettingsService settingsService, ReceiptExtractionService receiptExtractionService, AuthenticatedUser authenticatedUser) {
         this.transactionService = transactionService;
         this.projectService = projectService;
         this.settingsService = settingsService;
+        this.receiptExtractionService = receiptExtractionService;
         this.authenticatedUser = authenticatedUser;
         addClassName("edit-view");
     }
@@ -293,7 +301,7 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
 
         photoFileBuffer = new FileBuffer();
         photoUpload = new Upload(photoFileBuffer);
-        photoUpload.setAcceptedFileTypes("image/jpeg", "image/png");
+        photoUpload.setAcceptedFileTypes("image/jpeg", "image/png", "image/jpg", "application/pdf");
         photoUpload.setMaxFiles(1);
         Span photoLabel = new Span("Transaction Photo");
 
@@ -301,6 +309,10 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
         photoPreview.setMaxWidth("300px");
         photoPreview.setMaxHeight("300px");
         photoPreview.setVisible(false);
+
+        uploadedDocumentInfo = new Paragraph();
+        uploadedDocumentInfo.getStyle().set("margin", "0");
+        uploadedDocumentInfo.setVisible(false);
 
         downloadPhotoButton = new Button("Download Photo");
         downloadPhotoButton.setVisible(false);
@@ -321,7 +333,7 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
         HorizontalLayout photoButtons = new HorizontalLayout(downloadPhotoButton, deletePhotoButton);
         // photoButtons.setVisible(false); // Visibility of individual buttons is handled by updatePhotoComponentVisibility
 
-        photoLayout.add(photoLabel, photoUpload, photoPreview, photoButtons);
+        photoLayout.add(photoLabel, photoUpload, photoPreview, uploadedDocumentInfo, photoButtons);
 
         // --- Photo Upload Event Handling ---
         photoUpload.addSucceededListener(event -> {
@@ -331,13 +343,23 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
                 Files.copy(inputStream, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
                 tempUploadedPhotoPath = tempFile.getAbsolutePath(); // Store path for later processing in save()
-                photoPreview.setSrc("file:///" + tempUploadedPhotoPath); // Temporary local preview
-                photoPreview.setVisible(true);
-                Notification.show("Photo '" + event.getFileName() + "' uploaded. Save transaction to confirm.", 3000, Notification.Position.MIDDLE);
+                boolean isImage = event.getMIMEType() != null && event.getMIMEType().toLowerCase(Locale.ROOT).startsWith("image/");
+                if (isImage) {
+                    photoPreview.setSrc("file:///" + tempUploadedPhotoPath); // Temporary local preview
+                    photoPreview.setVisible(true);
+                    uploadedDocumentInfo.setVisible(false);
+                } else {
+                    photoPreview.setVisible(false);
+                    photoPreview.setSrc("");
+                    uploadedDocumentInfo.setText("Uploaded document: " + event.getFileName());
+                    uploadedDocumentInfo.setVisible(true);
+                }
+                Notification.show((isImage ? "Photo '" : "File '") + event.getFileName() + "' uploaded. Save transaction to confirm.", 3000, Notification.Position.MIDDLE);
                 // Do not show download/delete for a temp file that isn't yet persisted with the transaction
                 downloadPhotoButton.setVisible(false);
                 deletePhotoButton.setVisible(false);
                 photoButtons.setVisible(false);
+                triggerAutoFill(tempFile.toPath(), event.getMIMEType(), event.getFileName());
             } catch (IOException e) {
                 Notification.show("Photo upload failed: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START)
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -397,6 +419,105 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
 //        add(formLayout, buttons);
         add(hl4);
     }
+
+    private void triggerAutoFill(Path filePath, String mimeType, String originalFileName) {
+        if (filePath == null || !Files.exists(filePath)) {
+            return;
+        }
+        if (!receiptExtractionService.isConfigured()) {
+            Notification notification = Notification.show("Upload stored. Configure AI extraction to enable auto-fill.", 4000, Notification.Position.BOTTOM_START);
+            notification.addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+            return;
+        }
+
+        String fileDescriptor = (mimeType != null && mimeType.toLowerCase(Locale.ROOT).startsWith("image/")) ? "image" : "document";
+        Notification progress = Notification.show("Analyzing uploaded " + fileDescriptor + "…", 0, Notification.Position.BOTTOM_START);
+        progress.addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+
+        UI ui = UI.getCurrent();
+        CompletableFuture
+                .supplyAsync(() -> {
+                    try {
+                        return receiptExtractionService.extract(filePath);
+                    } catch (IOException e) {
+                        throw new CompletionException(e);
+                    }
+                })
+                .thenAccept(resultOptional -> ui.access(() -> {
+                    progress.close();
+                    if (resultOptional.isPresent()) {
+                        ReceiptExtractionResult result = resultOptional.get();
+                        if (result.hasAnyValue()) {
+                            applyExtractionResult(result);
+                            Notification success = Notification.show("Auto-fill suggestions applied from '" + originalFileName + "'.", 5000, Notification.Position.BOTTOM_START);
+                            success.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                        } else {
+                            Notification info = Notification.show("No auto-fill suggestions returned for '" + originalFileName + "'.", 4000, Notification.Position.BOTTOM_START);
+                            info.addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+                        }
+                        result.getWarnings().forEach(message -> {
+                            Notification warning = Notification.show(message, 5000, Notification.Position.BOTTOM_START);
+                            warning.addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+                        });
+                    } else {
+                        Notification info = Notification.show("No auto-fill suggestions returned for '" + originalFileName + "'.", 4000, Notification.Position.BOTTOM_START);
+                        info.addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+                    }
+                }))
+                .exceptionally(throwable -> {
+                    ui.access(() -> {
+                        progress.close();
+                        String message = throwable.getCause() != null ? throwable.getCause().getMessage() : throwable.getMessage();
+                        Notification error = Notification.show("Auto-fill failed: " + message, 6000, Notification.Position.BOTTOM_START);
+                        error.addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    });
+                    return null;
+                });
+    }
+
+    private void applyExtractionResult(ReceiptExtractionResult result) {
+        if (result.getDate() != null) {
+            date.setValue(result.getDate());
+        }
+        if (result.getAmount() != null) {
+            String currency = result.getCurrency();
+            if (currency == null || currency.isBlank()) {
+                currency = amount.getCurrency().getValue();
+            }
+            amount.setValue(new Money(result.getAmount().toPlainString(), currency));
+            amount.getCurrency().setValue(currency);
+        } else if (result.getCurrency() != null && !result.getCurrency().isBlank()) {
+            amount.getCurrency().setValue(result.getCurrency());
+        }
+
+        if (result.getVat() != null) {
+            String vatCurrency = (result.getCurrency() != null && !result.getCurrency().isBlank())
+                    ? result.getCurrency()
+                    : amount.getCurrency().getValue();
+            btw.setValue(new Money(result.getVat().toPlainString(), vatCurrency));
+        }
+
+        if (result.getDescription() != null && !result.getDescription().isBlank()) {
+            description.setValue(result.getDescription());
+        }
+
+        if (result.getCategory() != null && !result.getCategory().isBlank()) {
+            setCategoryFromName(result.getCategory());
+        }
+
+        if (result.getDagboek() != null && !result.getDagboek().isBlank()) {
+            setDagboekFromName(result.getDagboek());
+        }
+
+        if (result.getTransactionType() != null) {
+            transactionTypeRadio.setValue(result.getTransactionType());
+        }
+
+        if (result.getProjectName() != null && !result.getProjectName().isBlank()) {
+            setProjectFromName(result.getProjectName());
+        }
+    }
+
 
     private void enterEditMode() {
         isEditMode = true;
@@ -494,40 +615,40 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
     // private void deleteFile() { ... }
 
     private void populateProjectData() {
-        List<Project> projects = projectService.list(Pageable.unpaged()).getContent(); // Fetch all projects
-        project.setItems(projects);
+        projectOptions = projectService.list(Pageable.unpaged()).getContent(); // Fetch all projects
+        project.setItems(projectOptions);
         project.setItemLabelGenerator(Project::getName); // Display project names in ComboBox
     }
 
     private void setCategoryData(ComboBox<CategorieItems> comboBox) {
-        List<CategorieItems> categorieItems = new ArrayList<>();
-        categorieItems.add(new CategorieItems("Bankkosten"));
-        categorieItems.add(new CategorieItems("Belastingen"));
-        categorieItems.add(new CategorieItems("Diensten/Projecten"));
-        categorieItems.add(new CategorieItems("Huur en Nutsvoorzieningen"));
-        categorieItems.add(new CategorieItems("Kantoorbenodigdheden"));
-        categorieItems.add(new CategorieItems("Kruispost"));
-        categorieItems.add(new CategorieItems("Lening"));
-        categorieItems.add(new CategorieItems("Marketing"));
-        categorieItems.add(new CategorieItems("Materiaalkosten"));
-        categorieItems.add(new CategorieItems("Onderhoud & Reparatie"));
-        categorieItems.add(new CategorieItems("Overig"));
-        categorieItems.add(new CategorieItems("Salarissen en Lonen"));
-        categorieItems.add(new CategorieItems("Subcontractors"));
-        categorieItems.add(new CategorieItems("Training en Opleiding"));
-        categorieItems.add(new CategorieItems("Verhuur"));
-        categorieItems.add(new CategorieItems("Vervoer en Transport"));
-        categorieItems.add(new CategorieItems("Verzekeringen"));
+        categoryOptions.clear();
+        categoryOptions.add(new CategorieItems("Bankkosten"));
+        categoryOptions.add(new CategorieItems("Belastingen"));
+        categoryOptions.add(new CategorieItems("Diensten/Projecten"));
+        categoryOptions.add(new CategorieItems("Huur en Nutsvoorzieningen"));
+        categoryOptions.add(new CategorieItems("Kantoorbenodigdheden"));
+        categoryOptions.add(new CategorieItems("Kruispost"));
+        categoryOptions.add(new CategorieItems("Lening"));
+        categoryOptions.add(new CategorieItems("Marketing"));
+        categoryOptions.add(new CategorieItems("Materiaalkosten"));
+        categoryOptions.add(new CategorieItems("Onderhoud & Reparatie"));
+        categoryOptions.add(new CategorieItems("Overig"));
+        categoryOptions.add(new CategorieItems("Salarissen en Lonen"));
+        categoryOptions.add(new CategorieItems("Subcontractors"));
+        categoryOptions.add(new CategorieItems("Training en Opleiding"));
+        categoryOptions.add(new CategorieItems("Verhuur"));
+        categoryOptions.add(new CategorieItems("Vervoer en Transport"));
+        categoryOptions.add(new CategorieItems("Verzekeringen"));
 
-        comboBox.setItems(categorieItems);
+        comboBox.setItems(categoryOptions);
         comboBox.setItemLabelGenerator(CategorieItems::name);
     }
     private void setDagboekData(ComboBox<Dagboek> comboBox) {
-        List<Dagboek> dagboek = new ArrayList<>();
-        dagboek.add(new Dagboek("Kas"));
-        dagboek.add(new Dagboek("Bank"));
+        dagboekOptions.clear();
+        dagboekOptions.add(new Dagboek("Kas"));
+        dagboekOptions.add(new Dagboek("Bank"));
 
-        comboBox.setItems(dagboek);
+        comboBox.setItems(dagboekOptions);
         comboBox.setItemLabelGenerator(Dagboek::name);
 
     }
@@ -600,15 +721,25 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
 
     private void updatePhotoComponentVisibility() {
         boolean photoExists = currentPhotoFileName != null && !currentPhotoFileName.isEmpty();
-        photoPreview.setVisible(photoExists);
         downloadPhotoButton.setVisible(photoExists);
         deletePhotoButton.setVisible(photoExists);
-        // photoButtons layout visibility could also be controlled here if it's a separate container for both buttons.
-        // For now, individual visibility is fine.
         if (photoExists) {
-            photoPreview.setSrc("/uploaded-images/" + currentPhotoFileName);
+            String lowerCaseFile = currentPhotoFileName.toLowerCase(Locale.ROOT);
+            if (lowerCaseFile.endsWith(".pdf")) {
+                photoPreview.setVisible(false);
+                photoPreview.setSrc("");
+                uploadedDocumentInfo.setText("Stored document: " + currentPhotoFileName);
+                uploadedDocumentInfo.setVisible(true);
+            } else {
+                photoPreview.setSrc("/uploaded-images/" + currentPhotoFileName);
+                photoPreview.setVisible(true);
+                uploadedDocumentInfo.setVisible(false);
+            }
         } else {
+            photoPreview.setVisible(false);
             photoPreview.setSrc(""); // Clear src with empty string to avoid ambiguity
+            uploadedDocumentInfo.setVisible(false);
+            uploadedDocumentInfo.setText("");
         }
     }
 
@@ -776,6 +907,51 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
     private void handleError(Exception e) {
         Notification.show("An error occurred: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START)
                 .addThemeVariants(NotificationVariant.LUMO_ERROR);
+    }
+
+    private void setCategoryFromName(String categoryName) {
+        String normalized = categoryName.trim();
+        if (normalized.isEmpty()) {
+            return;
+        }
+        Optional<CategorieItems> existing = categoryOptions.stream()
+                .filter(item -> item.name().equalsIgnoreCase(normalized))
+                .findFirst();
+        CategorieItems value = existing.orElseGet(() -> {
+            CategorieItems newItem = new CategorieItems(normalized);
+            categoryOptions.add(newItem);
+            category.setItems(categoryOptions);
+            return newItem;
+        });
+        category.setValue(value);
+    }
+
+    private void setDagboekFromName(String dagboekName) {
+        String normalized = dagboekName.trim();
+        if (normalized.isEmpty()) {
+            return;
+        }
+        Optional<Dagboek> existing = dagboekOptions.stream()
+                .filter(item -> item.name().equalsIgnoreCase(normalized))
+                .findFirst();
+        Dagboek value = existing.orElseGet(() -> {
+            Dagboek newItem = new Dagboek(normalized);
+            dagboekOptions.add(newItem);
+            dagboek.setItems(dagboekOptions);
+            return newItem;
+        });
+        dagboek.setValue(value);
+    }
+
+    private void setProjectFromName(String projectName) {
+        String normalized = projectName.trim();
+        if (normalized.isEmpty()) {
+            return;
+        }
+        Optional<Project> projectMatch = projectOptions.stream()
+                .filter(p -> p.getName() != null && p.getName().equalsIgnoreCase(normalized))
+                .findFirst();
+        projectMatch.ifPresent(project::setValue);
     }
 
     private void updatePageTitle() {
