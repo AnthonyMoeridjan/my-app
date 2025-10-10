@@ -111,6 +111,7 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
     private Paragraph uploadedDocumentInfo;
     private Button downloadPhotoButton;
     private Button deletePhotoButton;
+    private HorizontalLayout photoActionButtons;
     private String tempUploadedPhotoPath; // To store path of newly uploaded file before saving transaction
     private String currentPhotoFileName; // To store filename of existing photo for the transaction
     // --- End Photo Upload Fields ---
@@ -330,10 +331,10 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
 
         deletePhotoButton.addClickListener(e -> deletePhoto());
 
-        HorizontalLayout photoButtons = new HorizontalLayout(downloadPhotoButton, deletePhotoButton);
-        // photoButtons.setVisible(false); // Visibility of individual buttons is handled by updatePhotoComponentVisibility
+        photoActionButtons = new HorizontalLayout(downloadPhotoButton, deletePhotoButton);
+        // Visibility of individual buttons is handled by updatePhotoComponentVisibility
 
-        photoLayout.add(photoLabel, photoUpload, photoPreview, uploadedDocumentInfo, photoButtons);
+        photoLayout.add(photoLabel, photoUpload, photoPreview, uploadedDocumentInfo, photoActionButtons);
 
         // --- Photo Upload Event Handling ---
         photoUpload.addSucceededListener(event -> {
@@ -358,7 +359,7 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
                 // Do not show download/delete for a temp file that isn't yet persisted with the transaction
                 downloadPhotoButton.setVisible(false);
                 deletePhotoButton.setVisible(false);
-                photoButtons.setVisible(false);
+                photoActionButtons.setVisible(false);
                 triggerAutoFill(tempFile.toPath(), event.getMIMEType(), event.getFileName());
             } catch (IOException e) {
                 Notification.show("Photo upload failed: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START)
@@ -741,6 +742,7 @@ public class TransactionEditView extends Div implements BeforeEnterObserver {
             uploadedDocumentInfo.setVisible(false);
             uploadedDocumentInfo.setText("");
         }
+        photoActionButtons.setVisible(photoExists);
     }
 
     private void save() {
