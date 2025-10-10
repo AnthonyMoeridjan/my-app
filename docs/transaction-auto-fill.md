@@ -62,7 +62,18 @@ This document outlines a suggested approach for implementing an AI-powered auto-
 - Respect data retention policies; delete temporary files after processing.
 - Implement rate limiting and quota monitoring for external AI APIs.
 
-## 5. Future Enhancements
+## 5. Implementation Checklist
+
+Use the list below to turn the high-level architecture into a concrete, working feature.
+
+1. **Provision an extractor endpoint** – Configure an external vendor (e.g., Azure Form Recognizer, Mindee, Veryfi) or deploy an internal service that accepts receipt uploads and returns JSON that matches `ReceiptExtractionResult.fromJson`.
+2. **Configure application secrets** – Populate `ai.receipt-extraction.url` and `ai.receipt-extraction.api-key` (via `application.properties`, environment variables, or your secrets manager). Restart the application to propagate the changes.
+3. **Verify upload persistence** – Confirm that your `upload.dir` has the right read/write permissions and that temporary files are purged once the transaction is saved or the browser tab is closed.
+4. **Exercise TransactionEditView** – Upload a sample receipt, watch the in-app notifications, and confirm that suggested values appear in each bound form field. Edit or clear values manually to ensure the binder still behaves as expected.
+5. **Handle validation fallbacks** – Decide on server-side defaults when extraction returns invalid data (e.g., ignore negative totals, clamp future dates) and extend `ReceiptExtractionResult` parsing if you need additional fields.
+6. **Instrument & monitor** – Add log aggregation and metrics (success rate, average latency, failure reasons) so you can react quickly when an upstream provider degrades.
+
+## 6. Future Enhancements
 
 - Build a training dataset from corrected forms and fine-tune a model or train a supervised classifier.
 - Add multi-language OCR support.
