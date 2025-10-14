@@ -2,6 +2,7 @@ package com.cofeecode.application.powerhauscore.views.accounting;
 
 import com.cofeecode.application.powerhauscore.data.Bill;
 import com.cofeecode.application.powerhauscore.data.BillStatus;
+import com.cofeecode.application.powerhauscore.data.Currency;
 import com.cofeecode.application.powerhauscore.data.Project;
 import com.cofeecode.application.powerhauscore.services.BillService;
 import com.cofeecode.application.powerhauscore.services.ProjectService;
@@ -41,6 +42,7 @@ public class BillEditView extends Div implements BeforeEnterObserver {
     private TextField billNumber = new TextField("Bill Number");
     private ComboBox<Project> project = new ComboBox<>("Project");
     private TextField amount = new TextField("Amount");
+    private ComboBox<Currency> currency = new ComboBox<>("Currency");
     private DatePicker billDate = new DatePicker("Bill Date");
     private DatePicker dueDate = new DatePicker("Due Date");
     private ComboBox<BillStatus> status = new ComboBox<>("Status");
@@ -92,9 +94,11 @@ public class BillEditView extends Div implements BeforeEnterObserver {
         FormLayout formLayout = new FormLayout();
         project.setItems(projectService.findAll());
         project.setItemLabelGenerator(Project::getName);
+        currency.setItems(Currency.values());
+        currency.setItemLabelGenerator(Currency::getDisplayName);
         status.setItems(BillStatus.values());
         status.setItemLabelGenerator(BillStatus::getDisplayName);
-        formLayout.add(billNumber, project, amount, billDate, dueDate, status);
+        formLayout.add(billNumber, project, amount, currency, billDate, dueDate, status);
         return formLayout;
     }
 

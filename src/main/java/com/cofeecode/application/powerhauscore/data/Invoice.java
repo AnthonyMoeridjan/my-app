@@ -20,6 +20,10 @@ public class Invoice extends AbstractEntity {
     @NotNull
     private BigDecimal amount;
 
+    @Enumerated(EnumType.STRING)
+    @NotNull
+    private Currency currency;
+
     @NotNull
     private LocalDate invoiceDate;
 
@@ -52,6 +56,14 @@ public class Invoice extends AbstractEntity {
 
     public void setAmount(BigDecimal amount) {
         this.amount = amount;
+    }
+
+    public Currency getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(Currency currency) {
+        this.currency = currency;
     }
 
     public LocalDate getInvoiceDate() {
