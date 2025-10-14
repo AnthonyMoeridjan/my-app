@@ -34,6 +34,9 @@ public class Invoice extends AbstractEntity {
     @NotNull
     private InvoiceStatus status;
 
+    @ManyToOne
+    private Transaction transaction;
+
     public String getInvoiceNumber() {
         return invoiceNumber;
     }
@@ -88,5 +91,13 @@ public class Invoice extends AbstractEntity {
 
     public void setStatus(InvoiceStatus status) {
         this.status = status;
+    }
+
+    public Transaction getTransaction() {
+        return transaction;
+    }
+
+    public void setTransaction(Transaction transaction) {
+        this.transaction = transaction;
     }
 }
