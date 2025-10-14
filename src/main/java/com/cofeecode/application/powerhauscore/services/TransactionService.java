@@ -15,55 +15,49 @@ import java.util.Optional;
 @Service
 public class TransactionService {
 
-    private final TransactionRepository repository;
-    private final ProjectRepository projectRepository;
+    private final TransactionRepository transactionRepository;
 
-    public TransactionService(TransactionRepository repository, ProjectRepository projectRepository) {
-        this.repository = repository;
-        this.projectRepository = projectRepository;
-    }
-
-    public void saveTransaction(Transaction transaction) {
-        repository.save(transaction);
+    public TransactionService(TransactionRepository transactionRepository) {
+        this.transactionRepository = transactionRepository;
     }
 
     public Optional<Transaction> get(Long id) {
-        return repository.findById(id);
+        return transactionRepository.findById(id);
     }
 
     public Transaction update(Transaction entity) {
-        return repository.save(entity);
+        return transactionRepository.save(entity);
     }
 
     public void delete(Long id) {
-        repository.deleteById(id);
+        transactionRepository.deleteById(id);
     }
 
     public Page<Transaction> list(Pageable pageable) {
-        return repository.findAll(pageable);
+        return transactionRepository.findAll(pageable);
     }
 
 
     public Page<Transaction> list(Pageable pageable, Specification<Transaction> filter) {
-        return repository.findAll(filter, pageable);
+        return transactionRepository.findAll(filter, pageable);
     }
 
     public int count() {
-        return (int) repository.count();
+        return (int) transactionRepository.count();
     }
     public Transaction create(Transaction transaction) {
-        return repository.save(transaction);
+        return transactionRepository.save(transaction);
     }
 
     public List<Transaction> findAll() {
-        return repository.findAll();
+        return transactionRepository.findAll();
     }
 
     public List<Project> findAllProjects() {
-        return projectRepository.findAll();
+        return transactionRepository.findAllProjects();
     }
 
     public List<Transaction> findAll(Specification<Transaction> spec) {
-        return repository.findAll(spec);
+        return transactionRepository.findAll(spec);
     }
 }

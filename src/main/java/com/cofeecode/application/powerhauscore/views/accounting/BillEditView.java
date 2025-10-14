@@ -1,6 +1,9 @@
 package com.cofeecode.application.powerhauscore.views.accounting;
 
-import com.cofeecode.application.powerhauscore.data.*;
+import com.cofeecode.application.powerhauscore.data.Bill;
+import com.cofeecode.application.powerhauscore.data.BillStatus;
+import com.cofeecode.application.powerhauscore.data.Project;
+import com.cofeecode.application.powerhauscore.data.Transaction;
 import com.cofeecode.application.powerhauscore.services.BillService;
 import com.cofeecode.application.powerhauscore.services.ProjectService;
 import com.cofeecode.application.powerhauscore.services.TransactionService;
@@ -41,11 +44,11 @@ public class BillEditView extends Div implements BeforeEnterObserver {
     private TextField billNumber = new TextField("Bill Number");
     private ComboBox<Project> project = new ComboBox<>("Project");
     private TextField amount = new TextField("Amount");
-    private ComboBox<Currency> currency = new ComboBox<>("Currency");
     private DatePicker billDate = new DatePicker("Bill Date");
     private DatePicker dueDate = new DatePicker("Due Date");
     private ComboBox<BillStatus> status = new ComboBox<>("Status");
-    private ComboBox<Transaction> transaction = new ComboBox<>("Transaction");
+    private TextField transactionDescription = new TextField("Transaction");
+    private Button selectTransaction = new Button("Select");
 
     private Button save = new Button("Save");
     private Button cancel = new Button("Cancel");
@@ -95,13 +98,23 @@ public class BillEditView extends Div implements BeforeEnterObserver {
         FormLayout formLayout = new FormLayout();
         project.setItems(projectService.findAll());
         project.setItemLabelGenerator(Project::getName);
-        currency.setItems(Currency.values());
-        currency.setItemLabelGenerator(Currency::getDisplayName);
         status.setItems(BillStatus.values());
         status.setItemLabelGenerator(BillStatus::getDisplayName);
-        transaction.setItems(transactionService.findAll());
-        transaction.setItemLabelGenerator(Transaction::getDescription);
-        formLayout.add(billNumber, project, amount, currency, billDate, dueDate, status, transaction);
+
+        transactionDescription.setReadOnly(true);
+        selectTransaction.addClickListener(e -> {
+            TransactionSelectionDialog dialog = new TransactionSelectionDialog(transactionService, selectedTransaction -> {
+                bill.setTransaction(selectedTransaction);
+                transactionDescription.setValue(selectedTransaction.getDescription());
+            });
+            dialog.open();
+        });
+
+        HorizontalLayout transactionLayout = new HorizontalLayout(transactionDescription, selectTransaction);
+        transactionLayout.setFlexGrow(1, transactionDescription);
+
+        formLayout.add(billNumber, project, amount, billDate, dueDate, status, transactionLayout);
+        formLayout.setColspan(transactionLayout, 2);
         return formLayout;
     }
 
@@ -118,6 +131,9 @@ public class BillEditView extends Div implements BeforeEnterObserver {
 
     private void populateForm() {
         binder.readBean(bill);
+        if (bill.getTransaction() != null) {
+            transactionDescription.setValue(bill.getTransaction().getDescription());
+        }
     }
 
     private void saveBill() {

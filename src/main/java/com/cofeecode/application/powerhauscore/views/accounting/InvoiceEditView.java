@@ -41,11 +41,11 @@ public class InvoiceEditView extends Div implements BeforeEnterObserver {
     private TextField invoiceNumber = new TextField("Invoice Number");
     private ComboBox<Project> project = new ComboBox<>("Project");
     private TextField amount = new TextField("Amount");
-    private ComboBox<Currency> currency = new ComboBox<>("Currency");
     private DatePicker invoiceDate = new DatePicker("Invoice Date");
     private DatePicker dueDate = new DatePicker("Due Date");
     private ComboBox<InvoiceStatus> status = new ComboBox<>("Status");
-    private ComboBox<Transaction> transaction = new ComboBox<>("Transaction");
+    private TextField transactionDescription = new TextField("Transaction");
+    private Button selectTransaction = new Button("Select");
 
     private Button save = new Button("Save");
     private Button cancel = new Button("Cancel");
@@ -95,13 +95,23 @@ public class InvoiceEditView extends Div implements BeforeEnterObserver {
         FormLayout formLayout = new FormLayout();
         project.setItems(projectService.findAll());
         project.setItemLabelGenerator(Project::getName);
-        currency.setItems(Currency.values());
-        currency.setItemLabelGenerator(Currency::getDisplayName);
         status.setItems(InvoiceStatus.values());
         status.setItemLabelGenerator(InvoiceStatus::getDisplayName);
-        transaction.setItems(transactionService.findAll());
-        transaction.setItemLabelGenerator(Transaction::getDescription);
-        formLayout.add(invoiceNumber, project, amount, currency, invoiceDate, dueDate, status, transaction);
+
+        transactionDescription.setReadOnly(true);
+        selectTransaction.addClickListener(e -> {
+            TransactionSelectionDialog dialog = new TransactionSelectionDialog(transactionService, selectedTransaction -> {
+                invoice.setTransaction(selectedTransaction);
+                transactionDescription.setValue(selectedTransaction.getDescription());
+            });
+            dialog.open();
+        });
+
+        HorizontalLayout transactionLayout = new HorizontalLayout(transactionDescription, selectTransaction);
+        transactionLayout.setFlexGrow(1, transactionDescription);
+
+        formLayout.add(invoiceNumber, project, amount, invoiceDate, dueDate, status, transactionLayout);
+        formLayout.setColspan(transactionLayout, 2);
         return formLayout;
     }
 
@@ -118,6 +128,9 @@ public class InvoiceEditView extends Div implements BeforeEnterObserver {
 
     private void populateForm() {
         binder.readBean(invoice);
+        if (invoice.getTransaction() != null) {
+            transactionDescription.setValue(invoice.getTransaction().getDescription());
+        }
     }
 
     private void saveInvoice() {
