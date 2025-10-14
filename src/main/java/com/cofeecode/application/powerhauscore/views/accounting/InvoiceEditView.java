@@ -1,11 +1,9 @@
 package com.cofeecode.application.powerhauscore.views.accounting;
 
-import com.cofeecode.application.powerhauscore.data.Currency;
-import com.cofeecode.application.powerhauscore.data.Invoice;
-import com.cofeecode.application.powerhauscore.data.InvoiceStatus;
-import com.cofeecode.application.powerhauscore.data.Project;
+import com.cofeecode.application.powerhauscore.data.*;
 import com.cofeecode.application.powerhauscore.services.InvoiceService;
 import com.cofeecode.application.powerhauscore.services.ProjectService;
+import com.cofeecode.application.powerhauscore.services.TransactionService;
 import com.cofeecode.application.powerhauscore.views.MainLayout;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -35,6 +33,7 @@ public class InvoiceEditView extends Div implements BeforeEnterObserver {
     private final String INVOICE_ID = "invoiceID";
     private final InvoiceService invoiceService;
     private final ProjectService projectService;
+    private final TransactionService transactionService;
 
     private Invoice invoice;
     private BeanValidationBinder<Invoice> binder;
@@ -46,14 +45,16 @@ public class InvoiceEditView extends Div implements BeforeEnterObserver {
     private DatePicker invoiceDate = new DatePicker("Invoice Date");
     private DatePicker dueDate = new DatePicker("Due Date");
     private ComboBox<InvoiceStatus> status = new ComboBox<>("Status");
+    private ComboBox<Transaction> transaction = new ComboBox<>("Transaction");
 
     private Button save = new Button("Save");
     private Button cancel = new Button("Cancel");
     private Button delete = new Button("Delete");
 
-    public InvoiceEditView(InvoiceService invoiceService, ProjectService projectService) {
+    public InvoiceEditView(InvoiceService invoiceService, ProjectService projectService, TransactionService transactionService) {
         this.invoiceService = invoiceService;
         this.projectService = projectService;
+        this.transactionService = transactionService;
         addClassName("invoice-edit-view");
 
         add(createTitle());
@@ -98,7 +99,9 @@ public class InvoiceEditView extends Div implements BeforeEnterObserver {
         currency.setItemLabelGenerator(Currency::getDisplayName);
         status.setItems(InvoiceStatus.values());
         status.setItemLabelGenerator(InvoiceStatus::getDisplayName);
-        formLayout.add(invoiceNumber, project, amount, currency, invoiceDate, dueDate, status);
+        transaction.setItems(transactionService.findAll());
+        transaction.setItemLabelGenerator(Transaction::getDescription);
+        formLayout.add(invoiceNumber, project, amount, currency, invoiceDate, dueDate, status, transaction);
         return formLayout;
     }
 
