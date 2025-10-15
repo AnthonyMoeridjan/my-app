@@ -19,6 +19,7 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -49,7 +50,7 @@ public class BillEditView extends Div implements BeforeEnterObserver {
     private DatePicker billDate = new DatePicker("Bill Date");
     private DatePicker dueDate = new DatePicker("Due Date");
     private ComboBox<BillStatus> status = new ComboBox<>("Status");
-    private TextField transactionDescription = new TextField("Transaction");
+    private TextArea transactionDescription = new TextArea("Transactions");
     private Button selectTransaction = new Button("Select");
 
     private Button save = new Button("Save");
@@ -107,9 +108,11 @@ public class BillEditView extends Div implements BeforeEnterObserver {
 
         transactionDescription.setReadOnly(true);
         selectTransaction.addClickListener(e -> {
-            TransactionSelectionDialog dialog = new TransactionSelectionDialog(transactionService, selectedTransaction -> {
-                bill.setTransaction(selectedTransaction);
-                transactionDescription.setValue(selectedTransaction.getDescription());
+            TransactionSelectionDialog dialog = new TransactionSelectionDialog(transactionService, selectedTransactions -> {
+                bill.setTransactions(selectedTransactions);
+                transactionDescription.setValue(selectedTransactions.stream()
+                        .map(Transaction::getDescription)
+                        .collect(java.util.stream.Collectors.joining("\n")));
             });
             dialog.open();
         });
@@ -135,8 +138,10 @@ public class BillEditView extends Div implements BeforeEnterObserver {
 
     private void populateForm() {
         binder.readBean(bill);
-        if (bill.getTransaction() != null) {
-            transactionDescription.setValue(bill.getTransaction().getDescription());
+        if (bill.getTransactions() != null && !bill.getTransactions().isEmpty()) {
+            transactionDescription.setValue(bill.getTransactions().stream()
+                    .map(Transaction::getDescription)
+                    .collect(java.util.stream.Collectors.joining("\n")));
         }
     }
 
