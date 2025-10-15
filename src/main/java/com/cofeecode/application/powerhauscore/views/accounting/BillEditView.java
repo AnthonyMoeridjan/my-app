@@ -52,6 +52,7 @@ public class BillEditView extends Div implements BeforeEnterObserver {
     private ComboBox<BillStatus> status = new ComboBox<>("Status");
     private TextArea transactionDescription = new TextArea("Transactions");
     private Button selectTransaction = new Button("Select");
+    private TextArea description = new TextArea("Description");
 
     private Button save = new Button("Save");
     private Button cancel = new Button("Cancel");
@@ -120,7 +121,8 @@ public class BillEditView extends Div implements BeforeEnterObserver {
         HorizontalLayout transactionLayout = new HorizontalLayout(transactionDescription, selectTransaction);
         transactionLayout.setFlexGrow(1, transactionDescription);
 
-        formLayout.add(billNumber, project, amount, currency, billDate, dueDate, status, transactionLayout);
+        formLayout.add(billNumber, project, amount, currency, billDate, dueDate, status, description, transactionLayout);
+        formLayout.setColspan(description, 2);
         formLayout.setColspan(transactionLayout, 2);
         return formLayout;
     }

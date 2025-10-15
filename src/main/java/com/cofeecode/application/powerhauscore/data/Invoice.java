@@ -43,6 +43,8 @@ public class Invoice extends AbstractEntity {
     @ManyToMany(fetch = FetchType.EAGER)
     private Set<Transaction> transactions;
 
+    private String description;
+
     public String getInvoiceNumber() {
         return invoiceNumber;
     }
@@ -105,5 +107,13 @@ public class Invoice extends AbstractEntity {
 
     public void setTransactions(Set<Transaction> transactions) {
         this.transactions = transactions;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }

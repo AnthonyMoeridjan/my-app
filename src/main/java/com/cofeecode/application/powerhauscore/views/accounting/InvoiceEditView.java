@@ -48,6 +48,7 @@ public class InvoiceEditView extends Div implements BeforeEnterObserver {
     private ComboBox<InvoiceStatus> status = new ComboBox<>("Status");
     private TextArea transactionDescription = new TextArea("Transactions");
     private Button selectTransaction = new Button("Select");
+    private TextArea description = new TextArea("Description");
 
     private Button save = new Button("Save");
     private Button cancel = new Button("Cancel");
@@ -116,7 +117,8 @@ public class InvoiceEditView extends Div implements BeforeEnterObserver {
         HorizontalLayout transactionLayout = new HorizontalLayout(transactionDescription, selectTransaction);
         transactionLayout.setFlexGrow(1, transactionDescription);
 
-        formLayout.add(invoiceNumber, project, amount, currency, invoiceDate, dueDate, status, transactionLayout);
+        formLayout.add(invoiceNumber, project, amount, currency, invoiceDate, dueDate, status, description, transactionLayout);
+        formLayout.setColspan(description, 2);
         formLayout.setColspan(transactionLayout, 2);
         return formLayout;
     }
