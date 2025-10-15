@@ -3,10 +3,15 @@ package com.cofeecode.application.powerhauscore.data;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Set;
 
 @Entity
 public class Invoice extends AbstractEntity {
@@ -34,8 +39,8 @@ public class Invoice extends AbstractEntity {
     @NotNull
     private InvoiceStatus status;
 
-    @ManyToOne
-    private Transaction transaction;
+    @ManyToMany
+    private Set<Transaction> transactions;
 
     public String getInvoiceNumber() {
         return invoiceNumber;
@@ -93,11 +98,11 @@ public class Invoice extends AbstractEntity {
         this.status = status;
     }
 
-    public Transaction getTransaction() {
-        return transaction;
+    public Set<Transaction> getTransactions() {
+        return transactions;
     }
 
-    public void setTransaction(Transaction transaction) {
-        this.transaction = transaction;
+    public void setTransactions(Set<Transaction> transactions) {
+        this.transactions = transactions;
     }
 }

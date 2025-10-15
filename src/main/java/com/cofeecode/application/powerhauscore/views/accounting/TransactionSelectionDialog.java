@@ -3,6 +3,7 @@ package com.cofeecode.application.powerhauscore.views.accounting;
 import com.cofeecode.application.powerhauscore.data.Transaction;
 import com.cofeecode.application.powerhauscore.services.TransactionService;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
 import com.cofeecode.application.powerhauscore.data.Currency;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -13,6 +14,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
 
 import java.math.BigDecimal;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -24,34 +26,36 @@ public class TransactionSelectionDialog extends Dialog {
     private final TextField amountFilter = new TextField();
     private final ComboBox<Currency> currencyFilter = new ComboBox<>();
     private final TransactionService transactionService;
-    private final Consumer<Transaction> transactionConsumer;
+    private final Consumer<Set<Transaction>> transactionConsumer;
+    private final Button confirmButton = new Button("Confirm");
 
-    public TransactionSelectionDialog(TransactionService transactionService, Consumer<Transaction> transactionConsumer) {
+    public TransactionSelectionDialog(TransactionService transactionService, Consumer<Set<Transaction>> transactionConsumer) {
         this.transactionService = transactionService;
         this.transactionConsumer = transactionConsumer;
 
         configureGrid();
         configureFilters();
 
+        confirmButton.addClickListener(e -> {
+            transactionConsumer.accept(grid.getSelectedItems());
+            close();
+        });
+
         HorizontalLayout filterLayout = new HorizontalLayout(searchField, dateFilter, amountFilter, currencyFilter);
         filterLayout.setWidthFull();
 
-        VerticalLayout layout = new VerticalLayout(filterLayout, grid);
+        VerticalLayout layout = new VerticalLayout(filterLayout, grid, confirmButton);
         layout.setSizeFull();
         add(layout);
         setSizeFull();
     }
 
     private void configureGrid() {
+        grid.setSelectionMode(Grid.SelectionMode.MULTI);
         grid.addColumn("date").setHeader("Date").setSortable(true);
         grid.addColumn("description").setHeader("Description").setSortable(true);
         grid.addColumn("amount").setHeader("Amount").setSortable(true);
         grid.addColumn("currency").setHeader("Currency").setSortable(true);
-
-        grid.asSingleSelect().addValueChangeListener(event -> {
-            transactionConsumer.accept(event.getValue());
-            close();
-        });
 
         grid.setItems(transactionService.findAll());
     }
