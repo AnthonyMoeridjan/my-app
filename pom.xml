@@ -28,6 +28,10 @@
                 <enabled>false</enabled>
             </snapshots>
         </repository>
+        <repository>
+            <id>so-maven</id>
+            <url>https://storedobject.com/maven</url>
+        </repository>
     </repositories>
 
     <dependencyManagement>
@@ -111,8 +115,9 @@
             <version>5.2.5</version>
         </dependency>
         <dependency>
-            <groupId>com.vaadin</groupId>
-            <artifactId>vaadin-charts-flow</artifactId>
+            <groupId>org.vaadin.addons.so</groupId>
+            <artifactId>so-charts</artifactId>
+            <version>5.0.3</version>
         </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>
