@@ -5,10 +5,7 @@ import com.cofeecode.application.powerhauscore.services.BillService;
 import com.cofeecode.application.powerhauscore.views.MainLayout;
 import com.cofeecode.application.powerhauscore.data.Bill;
 import com.cofeecode.application.powerhauscore.data.Invoice;
-import com.vaadin.flow.component.charts.Chart;
-import com.vaadin.flow.component.charts.model.ChartType;
-import com.vaadin.flow.component.charts.model.DataSeries;
-import com.vaadin.flow.component.charts.model.DataSeriesItem;
+import com.storedobject.chart.*;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -36,12 +33,27 @@ public class AccountingDashboardView extends VerticalLayout {
         summaryCards.add(createCard("Total Overdue Invoices", invoiceService.getTotalOverdueInvoices().toString()));
         summaryCards.add(createCard("Total Open Bills", billService.getTotalOpenBills().toString()));
 
-        Chart agingChart = new Chart(ChartType.BAR);
-        DataSeries dataSeries = new DataSeries();
+        SOChart soChart = new SOChart();
+        soChart.setSize("100%", "400px");
+
+        // Create axes
+        CategoryData labels = new CategoryData();
+        Data values = new Data();
         invoiceService.getInvoiceAging().forEach((key, value) -> {
-            dataSeries.add(new DataSeriesItem(key, value));
+            labels.add(key);
+            values.add(value);
         });
-        agingChart.getConfiguration().setSeries(dataSeries);
+
+        XAxis xAxis = new XAxis(labels);
+        YAxis yAxis = new YAxis(values);
+
+        // Create the bar chart
+        BarChart barChart = new BarChart(labels, values);
+        RectangularCoordinate rc = new RectangularCoordinate(xAxis, yAxis);
+        barChart.plotOn(rc);
+
+        // Add to the view
+        soChart.add(barChart);
 
         Grid<Invoice> overdueInvoicesGrid = new Grid<>(Invoice.class, false);
         overdueInvoicesGrid.setItems(invoiceService.getOverdueInvoices());
@@ -55,7 +67,7 @@ public class AccountingDashboardView extends VerticalLayout {
         overdueBillsGrid.addColumn(Bill::getAmount).setHeader("Amount");
         overdueBillsGrid.addColumn(Bill::getDueDate).setHeader("Due Date");
 
-        add(summaryCards, agingChart, new Span("Overdue Invoices"), overdueInvoicesGrid, new Span("Overdue Bills"), overdueBillsGrid);
+        add(summaryCards, soChart, new Span("Overdue Invoices"), overdueInvoicesGrid, new Span("Overdue Bills"), overdueBillsGrid);
     }
 
     private VerticalLayout createCard(String title, String value) {
